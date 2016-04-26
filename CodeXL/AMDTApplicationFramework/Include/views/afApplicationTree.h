@@ -42,8 +42,15 @@ public:
     virtual void PostContextMenuAction() {};
 
     /// Can this item be dropped into?
-    virtual bool IsItemDroppable(QTreeWidgetItem* pItem) { (void)pItem; return false; }
-    virtual bool CanItemBeDragged(QTreeWidgetItem* pItem) { (void)pItem; return false; }
+    /// \param pItem the item on which the user tried to drop
+    /// \param isMultipleDraggedFiles are there multiple dragged files?
+    /// \return true iff item / items can be dropped on the target item
+    virtual bool IsItemDroppable(QTreeWidgetItem* pItem, bool isMultipleDraggedFiles) { (void)pItem; (void)isMultipleDraggedFiles; return false; }
+
+    /// Should be implemented by inherited class that support drag & drop
+    /// \param draggedItems the list of items that the user try to drag
+    virtual bool CanItemsBeDragged(const QList<QTreeWidgetItem*>& draggedItems) { (void)draggedItems; return false; }
+
 protected:
     QList<gtString> m_unsupportedFileTypes;
 
@@ -193,7 +200,11 @@ protected slots:
     virtual void onObjectTreeActivation(QTreeWidgetItem* pActivated, int column);
     virtual void onItemSelectionChanged();
 
-    void OnDragAttempt(QTreeWidgetItem* pItem, bool& canItemBeDragged);
+    /// Is called when the tree is performing a drag attempt on the currently selected item. The function will check if the 
+    /// drag operation can be performed for the tree selected items
+    /// \param draggedItemsList the list of items that the user tries to drag
+    /// \param canItemsBeDragged[out] true iff the items can be dragged
+    void OnDragAttempt(const QList<QTreeWidgetItem*>& draggedItemsList, bool& canItemsBeDragged);
 
     /// Handling tree elements drop
     void OnTreeElementDropEvent(QDropEvent* pEvent);

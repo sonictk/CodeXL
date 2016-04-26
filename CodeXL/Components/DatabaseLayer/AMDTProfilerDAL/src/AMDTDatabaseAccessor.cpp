@@ -4640,9 +4640,11 @@ bool AmdtDatabaseAccessor::InsertSamples(CPSampleData& sampleData)
     if (m_pImpl != nullptr)
     {
         ret = m_pImpl->InsertSamples(
-                  sampleData.m_processThreadId,
+                  // sampleData.m_processThreadId,
+            0,
                   sampleData.m_moduleInstanceId,
-                  sampleData.m_coreSamplingConfigId,
+           //       sampleData.m_coreSamplingConfigId,
+            0,
                   sampleData.m_functionId,
                   sampleData.m_offset,
                   sampleData.m_count);

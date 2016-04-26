@@ -284,7 +284,7 @@ void afApplicationTree::setFrameLayout(QWidget* pParent)
     m_pTreeCtrl->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     // Connect to drag & drop signals
-    bool rc = connect(m_pTreeCtrl, SIGNAL(DragAttempt(QTreeWidgetItem*, bool&)), this, SLOT(OnDragAttempt(QTreeWidgetItem*, bool&)));
+    bool rc = connect(m_pTreeCtrl, SIGNAL(DragAttempt(const QList<QTreeWidgetItem*>&, bool&)), this, SLOT(OnDragAttempt(const QList<QTreeWidgetItem*>&, bool&)));
     GT_ASSERT(rc);
 
     rc = connect(m_pTreeCtrl, SIGNAL(TreeElementDropEvent(QDropEvent*)), this, SLOT(OnTreeElementDropEvent(QDropEvent*)));
@@ -2231,7 +2231,8 @@ void afApplicationTree::OnTreeElementDragMoveEvent(QDragMoveEvent* pEvent)
                         {
                             pEvent->setDropAction(Qt::MoveAction);
 
-                            bool isItemDroppable = pTreeHandler->IsItemDroppable(pItem);
+                            bool isMultiple = (m_pTreeCtrl->DraggedItems().size() > 1);
+                            bool isItemDroppable = pTreeHandler->IsItemDroppable(pItem, isMultiple);
 
                             if (isItemDroppable)
                             {
@@ -2251,11 +2252,11 @@ void afApplicationTree::OnTreeElementDragMoveEvent(QDragMoveEvent* pEvent)
     }
 }
 
-void afApplicationTree::OnDragAttempt(QTreeWidgetItem* pItem, bool& canItemBeDragged)
+void afApplicationTree::OnDragAttempt(const QList<QTreeWidgetItem*>& draggedItemsList, bool& canItemsBeDragged)
 {
     GT_IF_WITH_ASSERT(m_pTreeCtrl != nullptr)
     {
-        canItemBeDragged = false;
+        canItemsBeDragged = false;
 
         for (int i = 0; i < (int)m_applicationTreeHandlers.size(); i++)
         {
@@ -2263,11 +2264,14 @@ void afApplicationTree::OnDragAttempt(QTreeWidgetItem* pItem, bool& canItemBeDra
 
             if (pTreeHandler != nullptr)
             {
-                canItemBeDragged = pTreeHandler->CanItemBeDragged(pItem);
-
-                if (canItemBeDragged)
+                if (!draggedItemsList.isEmpty())
                 {
-                    break;
+                    canItemsBeDragged = pTreeHandler->CanItemsBeDragged(draggedItemsList);
+
+                    if (canItemsBeDragged)
+                    {
+                        break;
+                    }
                 }
             }
         }

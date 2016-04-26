@@ -22,7 +22,7 @@
 
 afTreeCtrl::afTreeCtrl(QWidget* pParent, int numberOfColumns, bool addPasteAction, bool addExpandCollapeAllActions) :
     acTreeCtrl(pParent, numberOfColumns, addPasteAction, addExpandCollapeAllActions),
-    m_pDragItem(nullptr), m_pHoveredItem(nullptr), m_isDragging(false), m_pDragTimer(nullptr)
+    m_pHoveredItem(nullptr), m_isDragging(false), m_pDragTimer(nullptr)
 {
     setDragDropMode(QAbstractItemView::InternalMove);
     setAttribute(Qt::WA_Hover, true);
@@ -60,21 +60,17 @@ void afTreeCtrl::mouseMoveEvent(QMouseEvent* pEvent)
 {
     if (pEvent->buttons() & Qt::LeftButton)
     {
-        // Enable drag only for a single item
-        if (selectedItems().count() == 1)
+        int distance = (pEvent->pos() - m_startPos).manhattanLength();
+
+        if (distance >= QApplication::startDragDistance())
         {
-            int distance = (pEvent->pos() - m_startPos).manhattanLength();
 
-            if (distance >= QApplication::startDragDistance())
+            m_isDragging = false;
+            emit DragAttempt(selectedItems(), m_isDragging);
+
+            if (m_isDragging)
             {
-                m_pDragItem = itemAt(m_startPos);
-                m_isDragging = false;
-                emit DragAttempt(m_pDragItem, m_isDragging);
-
-                if (m_isDragging)
-                {
-                    PerformDrag();
-                }
+                PerformDrag();
             }
         }
     }
@@ -82,27 +78,37 @@ void afTreeCtrl::mouseMoveEvent(QMouseEvent* pEvent)
 
 void afTreeCtrl::PerformDrag()
 {
-    QTreeWidgetItem* pItem = selectedItems().first();
+    m_draggedItemsList.clear();
 
-    if (pItem != nullptr)
+    if (selectedItems().size() > 0)
     {
-        QMimeData* pMimeData = new QMimeData;
-        QString plainText = pItem->text(0);
-        pMimeData->setText(plainText);
-        QByteArray array(plainText.toStdString().c_str());
-        pMimeData->setData(QString("application/x-qabstractitemmodeldatalist"), array);
-        QDrag* pDrag = new QDrag(this);
-        pDrag->setMimeData(pMimeData);
-        unsigned int iconPixelSize = acIconSizeToPixelSize(acGetRecommendedIconSize());
-        QPixmap* pPixmap = new QPixmap(pItem->icon(0).pixmap(iconPixelSize, iconPixelSize));
-        pDrag->setPixmap(*pPixmap);
-
-        if (pDrag->exec(Qt::MoveAction) == Qt::CopyAction)
+        QTreeWidgetItem* pSelectedItem = selectedItems()[0];
+        if (pSelectedItem != nullptr)
         {
-            m_pDragItem = pItem;
-        }
+            QMimeData* pMimeData = new QMimeData;
 
-        setAutoScroll(true);
+#pragma message ("TODO: do not submit before testing thie code:")
+            QString plainText = pSelectedItem->text(0);
+            pMimeData->setText(plainText);
+            QByteArray array(plainText.toStdString().c_str());
+            pMimeData->setData(QString("application/x-qabstractitemmodeldatalist"), array);
+            QDrag* pDrag = new QDrag(this);
+            pDrag->setMimeData(pMimeData);
+            unsigned int iconPixelSize = acIconSizeToPixelSize(acGetRecommendedIconSize());
+            QPixmap* pPixmap = new QPixmap(pSelectedItem->icon(0).pixmap(iconPixelSize, iconPixelSize));
+            pDrag->setPixmap(*pPixmap);
+
+            Qt::DropAction dropRes = pDrag->exec(Qt::MoveAction);
+            if (dropRes & Qt::MoveAction)
+            {
+                foreach(QTreeWidgetItem* pItem, selectedItems())
+                {
+                    m_draggedItemsList << pItem;
+                }
+            }
+
+            setAutoScroll(true);
+        }
     }
 }
 
@@ -178,15 +184,6 @@ void afTreeCtrl::dragMoveEvent(QDragMoveEvent* pEvent)
     {
         pEvent->ignore();
     }
-}
-
-
-bool afTreeCtrl::dropMimeData(QTreeWidgetItem* parent, int index, const QMimeData* data, Qt::DropAction action)
-{
-    QTreeWidget::dropMimeData(parent, index, data, action);
-    QMessageBox::information(this, "", parent->text(currentColumn()) + "dropped");
-
-    return true;
 }
 
 void afTreeCtrl::dropEvent(QDropEvent* pEvent)

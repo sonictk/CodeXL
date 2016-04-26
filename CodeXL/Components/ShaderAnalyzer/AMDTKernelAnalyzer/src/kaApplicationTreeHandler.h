@@ -79,11 +79,27 @@ public:
     virtual void PostContextMenuAction();
 
     virtual bool IsDragDropSupported(QDropEvent* pEvent, QString& dragDropFile, bool& shouldAccpet);
-    virtual bool IsItemDroppable(QTreeWidgetItem* pItem);
-    virtual bool CanItemBeDragged(QTreeWidgetItem* pItem);
+
+    /// Can this item be dropped into?
+    /// \param pItem the item on which the user tried to drop
+    /// \param isMultipleDraggedFiles are there multiple dragged files?
+    /// \return true iff item / items can be dropped on the target item
+    virtual bool IsItemDroppable(QTreeWidgetItem* pItem, bool isMultipleDraggedFiles);
+
+    /// Return true iff the list of items can be dragged
+    /// \param draggedItems the list of items selected by the user
+    /// \return true iff the items can be dragged
+    virtual bool CanItemsBeDragged(const QList<QTreeWidgetItem*>& draggedItems);
+
     virtual bool ExecuteDropEvent(QDropEvent* pEvent, const QString& dragDropFile);
 
-    void ExecuteDropForDraggedTreeItem(const QMimeData* pMimeData, QDropEvent* pEvent);
+    void ExecuteDropForDraggedTreeItems(const QMimeData* pMimeData, QDropEvent* pEvent);
+
+    /// Drop an item on a program node
+    /// \param pDroppedOnItemData the dropped item data
+    /// \param pProgramItemData the dropped item program parent item data
+    /// \param pDraggedItem the dragged item
+    void DropSingleItemOnProgramNode(const afApplicationTreeItemData* pDroppedOnItemData, const afApplicationTreeItemData* pProgramItemData, QTreeWidgetItem* pDraggedItem);
 
     /// Executing drop on Program node dragged from OS items
     /// \param [in] pMimeData - to extract URLs

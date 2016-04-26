@@ -4134,7 +4134,7 @@ bool kaApplicationTreeHandler::ExecuteDropEvent(QDropEvent* pEvent, const QStrin
             else if (pMimeData->hasFormat("text/plain"))
             {
                 // Dropped element is dragged from the tree, it should be a file element, and dropped into a program child
-                ExecuteDropForDraggedTreeItem(pMimeData, pEvent);
+                ExecuteDropForDraggedTreeItems(pMimeData, pEvent);
             }
         }
     }
@@ -4254,27 +4254,11 @@ void kaApplicationTreeHandler::DropOutertemsOnRelevantProgram(const QMimeData* p
     }
 }
 
-void kaApplicationTreeHandler::ExecuteDropForDraggedTreeItem(const QMimeData* pMimeData, QDropEvent* pEvent)
+void kaApplicationTreeHandler::ExecuteDropForDraggedTreeItems(const QMimeData* pMimeData, QDropEvent* pEvent)
 {
     // Sanity check:
     GT_IF_WITH_ASSERT((pMimeData != nullptr) && (pEvent != nullptr) && (m_pApplicationTree != nullptr))
     {
-        gtVector<osFilePath> addedFilePaths;
-
-        if (pMimeData->hasUrls())
-        {
-
-            QString draggedItemText = pMimeData->text();
-
-            foreach (QUrl url, pMimeData->urls())
-            {
-                // Get the current file path:
-                gtString fileUrl = acQStringToGTString(url.toLocalFile());
-                osFilePath droppedFilePath(fileUrl);
-                addedFilePaths.push_back(droppedFilePath);
-            }
-        }
-
         // Dropped element is a tree elements dragged from the application tree
         // The dragged element (which is expected to be a source file)
         // should be set as the pipeline stage for the dropped target (which is expected to be a pipeline stage)
@@ -4282,69 +4266,65 @@ void kaApplicationTreeHandler::ExecuteDropForDraggedTreeItem(const QMimeData* pM
 
         if (pDroppedItem != nullptr)
         {
-            GT_IF_WITH_ASSERT(IsItemDroppable(pDroppedItem))
+            bool areMultipleItemsDragged = (m_pApplicationTree->treeControl()->DraggedItems().size() > 1);
+            GT_IF_WITH_ASSERT(IsItemDroppable(pDroppedItem, areMultipleItemsDragged))
             {
                 afApplicationTreeItemData* pDroppedOnItemData = m_pApplicationTree->getTreeItemData(pDroppedItem);
 
                 if (pDroppedOnItemData != nullptr)
                 {
-                    afApplicationTreeItemData* pDraggedItemData = nullptr;
-                    kaTreeDataExtension* pDraggedItemKAData = nullptr;
-
-                    QTreeWidgetItem* pDraggedItem = m_pApplicationTree->treeControl()->DraggedItem();
-
-                    if (pDraggedItem != nullptr)
-                    {
-                        pDraggedItemData = m_pApplicationTree->getTreeItemData(pDraggedItem);
-
-                        if (pDraggedItemData != nullptr)
-                        {
-                            pDraggedItemKAData = qobject_cast<kaTreeDataExtension*>(pDraggedItemData->extendedItemData());
-
-                            if (pDraggedItemKAData != nullptr)
-                            {
-                                if (!pDraggedItemKAData->filePath().isEmpty())
-                                {
-                                    addedFilePaths.push_back(pDraggedItemKAData->filePath());
-                                }
-                            }
-                        }
-                    }
-
-                    // Find the parent program for the dropped item
+                    // Find the parent program for the dropped item. The dropped item should be a program, or a program child. If not, assert
                     const afApplicationTreeItemData* pProgramItemData = FindParentItemDataOfType(pDroppedOnItemData, AF_TREE_ITEM_KA_PROGRAM);
                     GT_IF_WITH_ASSERT(pProgramItemData != nullptr)
                     {
-                        kaTreeDataExtension* pDroppedKAData = qobject_cast<kaTreeDataExtension*>(pProgramItemData->extendedItemData());
-                        GT_IF_WITH_ASSERT(pDroppedKAData != nullptr)
+                        // Go over the dragged items and perform drag operation
+                        foreach (QTreeWidgetItem* pDraggedItem, m_pApplicationTree->treeControl()->DraggedItems())
                         {
-                            // Check if the dropped item is a program stage. If not, item type should be calculated according to the parent program
-                            afTreeItemType droppedItemType = pDroppedOnItemData->m_itemType;
-                            bool isProgramStage = (droppedItemType >= AF_TREE_ITEM_KA_FIRST_FILE_ITEM_TYPE) && (droppedItemType <= AF_TREE_ITEM_KA_PROGRAM_GL_VERT);
-
-                            if (!isProgramStage)
-                            {
-                                //
-                                droppedItemType = AF_TREE_ITEM_KA_PROGRAM_GL_COMP;
-
-                                if ((pDroppedKAData->GetProgram()->GetBuildType() == kaProgramCL) || (pDroppedKAData->GetProgram()->GetBuildType() == kaProgramDX))
-                                {
-                                    droppedItemType = AF_TREE_ITEM_KA_PROGRAM_SHADER;
-                                }
-                            }
-
-                            for (const osFilePath& it : addedFilePaths)
-                            {
-                                // Add the file node to the program branch
-                                AddFileNodeToProgramBranch(it, pProgramItemData, droppedItemType);
-                            }
+                            // Drop the current item on the program node
+                            DropSingleItemOnProgramNode(pDroppedOnItemData, pProgramItemData, pDraggedItem);
                         }
+
+
                     }
                 }
 
                 pEvent->setDropAction(Qt::MoveAction);
                 pEvent->accept();
             }
+        }
+    }
+}
+
+
+void kaApplicationTreeHandler::DropSingleItemOnProgramNode(const afApplicationTreeItemData* pDroppedOnItemData, const afApplicationTreeItemData* pProgramItemData, QTreeWidgetItem* pDraggedItem)
+{
+    // Sanity check:
+    GT_IF_WITH_ASSERT((pProgramItemData != nullptr) && (pDraggedItem != nullptr) && (pDroppedOnItemData != nullptr))
+    {
+        afApplicationTreeItemData* pDraggedItemData = nullptr;
+        kaTreeDataExtension* pDraggedItemKAData = nullptr;
+        pDraggedItemData = m_pApplicationTree->getTreeItemData(pDraggedItem);
+
+        kaTreeDataExtension* pDroppedKAData = qobject_cast<kaTreeDataExtension*>(pProgramItemData->extendedItemData());
+        GT_IF_WITH_ASSERT(pDroppedKAData != nullptr)
+        {
+            // Check if the dropped item is a program stage. If not, item type should be calculated according to the parent program
+            afTreeItemType droppedItemType = pDroppedOnItemData->m_itemType;
+            bool isProgramStage = (droppedItemType >= AF_TREE_ITEM_KA_FIRST_FILE_ITEM_TYPE) && (droppedItemType <= AF_TREE_ITEM_KA_PROGRAM_GL_VERT);
+
+            if (!isProgramStage)
+            {
+                //
+                droppedItemType = AF_TREE_ITEM_KA_PROGRAM_GL_COMP;
+
+                if ((pDroppedKAData->GetProgram()->GetBuildType() == kaProgramCL) || (pDroppedKAData->GetProgram()->GetBuildType() == kaProgramDX))
+                {
+                    droppedItemType = AF_TREE_ITEM_KA_PROGRAM_SHADER;
+                }
+            }
+
+            // Add the file node to the program branch
+            AddFileNodeToProgramBranch(pDraggedItemKAData->filePath(), pProgramItemData, droppedItemType);
         }
     }
 }
@@ -6287,8 +6267,10 @@ void kaApplicationTreeHandler::AddProgram(bool focusNode, kaProgram* pProgram)
     }
 }
 
-bool kaApplicationTreeHandler::IsItemDroppable(QTreeWidgetItem* pDestinationItem)
+bool kaApplicationTreeHandler::IsItemDroppable(QTreeWidgetItem* pDestinationItem, bool isMultipleDraggedFiles)
 {
+    GT_UNREFERENCED_PARAMETER(isMultipleDraggedFiles);
+
     bool retVal = afExecutionModeManager::instance().isActiveMode(KA_STR_executionMode);
 
     if (retVal && (m_pApplicationTree != nullptr) && (m_pApplicationTree->treeControl() != nullptr))
@@ -6297,34 +6279,35 @@ bool kaApplicationTreeHandler::IsItemDroppable(QTreeWidgetItem* pDestinationItem
 
         if (pDestinationItem != nullptr)
         {
-            // Get the dragged item file path
-            QTreeWidgetItem* pDraggedItem = m_pApplicationTree->treeControl()->DraggedItem();
-            afApplicationTreeItemData* pDraggedItemData = nullptr;
-            kaTreeDataExtension* pKADraggedItemData = nullptr;
-
-            if (pDraggedItem != nullptr)
-            {
-                pDraggedItemData = m_pApplicationTree->getTreeItemData(pDraggedItem);
-
-                if (pDraggedItemData != nullptr)
-                {
-                    pKADraggedItemData = qobject_cast<kaTreeDataExtension*>(pDraggedItemData->extendedItemData());
-                }
-            }
-
             afApplicationTreeItemData* pDestinationItemData = m_pApplicationTree->getTreeItemData(pDestinationItem);
 
             if ((pDestinationItemData != nullptr))
             {
                 kaTreeDataExtension* pKADestinationItemData = qobject_cast<kaTreeDataExtension*>(pDestinationItemData->extendedItemData());
 
-                osFilePath draggedFile;
-
-                if (pKADraggedItemData != nullptr)
+                // Get the dragged item file paths
+                QList<osFilePath> draggedFiles;
+                foreach(QTreeWidgetItem* pDraggedItem, m_pApplicationTree->treeControl()->DraggedItems())
                 {
-                    draggedFile = pKADraggedItemData->filePath();
+                    if (pDraggedItem != nullptr)
+                    {
+                        afApplicationTreeItemData* pDraggedItemData = nullptr;
+                        kaTreeDataExtension* pKADraggedItemData = nullptr;
+
+                        pDraggedItemData = m_pApplicationTree->getTreeItemData(pDraggedItem);
+
+                        if (pDraggedItemData != nullptr)
+                        {
+                            pKADraggedItemData = qobject_cast<kaTreeDataExtension*>(pDraggedItemData->extendedItemData());
+                            if (pKADraggedItemData != nullptr)
+                            {
+                                draggedFiles << pKADraggedItemData->filePath();
+                            }
+                        }
+                    }
                 }
 
+               
                 if (pKADestinationItemData != nullptr)
                 {
                     // if a destination node is a node under program node
@@ -6374,9 +6357,12 @@ bool kaApplicationTreeHandler::IsItemDroppable(QTreeWidgetItem* pDestinationItem
                                     if (retVal)
                                     {
                                         // Allow drop only if this file is not already attached to this program
-                                        if (!draggedFile.isEmpty())
+                                        if (!draggedFiles.isEmpty())
                                         {
-                                            retVal = !pProgram->HasFile(draggedFile, AF_TREE_ITEM_ITEM_NONE);
+                                            foreach (osFilePath file, draggedFiles)
+                                            {
+                                                retVal = retVal && !pProgram->HasFile(file, AF_TREE_ITEM_ITEM_NONE);
+                                            }
                                         }
                                     }
                                 }
@@ -6391,23 +6377,26 @@ bool kaApplicationTreeHandler::IsItemDroppable(QTreeWidgetItem* pDestinationItem
     return retVal;
 }
 
-bool kaApplicationTreeHandler::CanItemBeDragged(QTreeWidgetItem* pItem)
+bool kaApplicationTreeHandler::CanItemsBeDragged(const QList<QTreeWidgetItem*>& draggedItems)
 {
     bool retVal = afExecutionModeManager::instance().isActiveMode(KA_STR_executionMode);
 
     if (retVal && (m_pApplicationTree != nullptr))
     {
-        retVal = false;
-
-        if (pItem != nullptr)
+        if (!draggedItems.isEmpty())
         {
-            afApplicationTreeItemData* pItemData = m_pApplicationTree->getTreeItemData(pItem);
+            retVal = true;
 
-            if (pItemData != nullptr)
+            foreach(QTreeWidgetItem* pItem, draggedItems)
             {
-                if (pItemData->m_itemType == AF_TREE_ITEM_KA_FILE)
+                if (pItem != nullptr)
                 {
-                    retVal = true;
+                    afApplicationTreeItemData* pItemData = m_pApplicationTree->getTreeItemData(pItem);
+
+                    if (pItemData != nullptr)
+                    {
+                        retVal = retVal && (pItemData->m_itemType == AF_TREE_ITEM_KA_FILE);
+                    }
                 }
             }
         }

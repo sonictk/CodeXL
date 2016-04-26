@@ -288,9 +288,9 @@ bool amdtProfileDbAdapter::InsertSamples(const CPASampeInfoList& sampleList)
     {
         CPSampleData sampleData;
 
-        sampleData.m_processThreadId = it.m_processThreadId;
+//        sampleData.m_processThreadId = it.m_processThreadId;
         sampleData.m_moduleInstanceId = it.m_moduleInstanceId;
-        sampleData.m_coreSamplingConfigId = it.m_coreSamplingConfigId;
+//        sampleData.m_coreSamplingConfigId = it.m_coreSamplingConfigId;
         sampleData.m_functionId = it.m_functionId;
         sampleData.m_offset = it.m_offset;
         sampleData.m_count = it.m_count;

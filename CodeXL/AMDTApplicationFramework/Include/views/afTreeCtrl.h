@@ -22,7 +22,6 @@
 // Infra:
 #include <AMDTApplicationComponents/Include/acTreeCtrl.h>
 
-#pragma warning(disable : 4458)
 /// afApplicationTreeCtrl class is derived from acTreeCtrl
 /// and is added to allow drag and drop items
 /// inside the tree
@@ -45,11 +44,6 @@ public:
     void dragEnterEvent(QDragEnterEvent* event);
     void dragMoveEvent(QDragMoveEvent* event);
 
-    //virtual bool dropMimeData(const QMimeData *data, Qt::DropAction action,   int row, int column, const QModelIndex &parent);
-    //virtual QMimeData *mimeData(const QModelIndexList &indexes) const;
-    //virtual QStringList mimeTypes() const;
-    //virtual Qt::DropActions supportedDropActions() const { return Qt::CopyAction | Qt::MoveAction; }
-    virtual bool dropMimeData(QTreeWidgetItem* parent, int index, const QMimeData* data, Qt::DropAction action);
     void dropEvent(QDropEvent* event);
     Qt::DropActions supportedDropActions() const;
     QStringList mimeTypes() const;
@@ -57,7 +51,12 @@ public:
     QMimeData* mimeData(const QModelIndexList& indexes) const;
 
     QList<QTreeWidgetItem*> Items(const QMimeData* pMimeData) const { return items(pMimeData); }
-    QTreeWidgetItem* DraggedItem() const { return m_pDragItem; };
+
+    /// Returns the list of dragged items
+    /// \return the list of currently dragged items
+    const QList<QTreeWidgetItem*> DraggedItems() const { return m_draggedItemsList; };
+
+    /// Is the user currently dragging items?
     bool IsDragging() const { return m_isDragging; }
 
 protected slots:
@@ -73,7 +72,7 @@ signals:
     void TreeElementDragMoveEvent(QDragMoveEvent* pEvent);
 
     /// sent before QDrag creation
-    void DragAttempt(QTreeWidgetItem* pItem, bool& canItemBeDragged);
+    void DragAttempt(const QList<QTreeWidgetItem*>& draggedItemsList, bool& canItemBeDragged);
 
 private:
     void PerformDrag();
@@ -83,8 +82,8 @@ private:
     /// drag start position
     QPoint m_startPos;
 
-    /// Current drag item - set to nullptr after drop
-    QTreeWidgetItem* m_pDragItem;
+    /// The current list of dragged items
+    QList<QTreeWidgetItem*> m_draggedItemsList;
 
     /// Contain the hovered item. When the hovered item is changed, the last hovered item's be back to normal
     QTreeWidgetItem* m_pHoveredItem;
