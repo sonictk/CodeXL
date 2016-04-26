@@ -2173,6 +2173,13 @@ void afApplicationTree::dropEvent(QDropEvent* pEvent)
     {
         afApplicationCommands::instance()->HandleDropEvent(pEvent);
     }
+
+    // Sanity check:
+    GT_IF_WITH_ASSERT(m_pTreeCtrl != nullptr)
+    {
+        // Clear the dragged items after droping it
+        m_pTreeCtrl->ClearDraggedItems();
+    }
 }
 
 void afApplicationTree::OnTreeElementDropEvent(QDropEvent* pEvent)

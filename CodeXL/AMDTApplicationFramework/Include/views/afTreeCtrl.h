@@ -59,6 +59,9 @@ public:
     /// Is the user currently dragging items?
     bool IsDragging() const { return m_isDragging; }
 
+    /// Clear the dragged items list
+    void ClearDraggedItems();
+
 protected slots:
     /// Handle the drag timer signal:
     void OnDragTimer();

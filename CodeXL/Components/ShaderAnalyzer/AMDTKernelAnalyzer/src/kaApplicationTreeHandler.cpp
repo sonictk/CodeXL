@@ -4302,11 +4302,11 @@ void kaApplicationTreeHandler::DropSingleItemOnProgramNode(const afApplicationTr
     GT_IF_WITH_ASSERT((pProgramItemData != nullptr) && (pDraggedItem != nullptr) && (pDroppedOnItemData != nullptr))
     {
         afApplicationTreeItemData* pDraggedItemData = nullptr;
-        kaTreeDataExtension* pDraggedItemKAData = nullptr;
         pDraggedItemData = m_pApplicationTree->getTreeItemData(pDraggedItem);
 
         kaTreeDataExtension* pDroppedKAData = qobject_cast<kaTreeDataExtension*>(pProgramItemData->extendedItemData());
-        GT_IF_WITH_ASSERT(pDroppedKAData != nullptr)
+        kaTreeDataExtension* pDraggedItemKAData = qobject_cast<kaTreeDataExtension*>(pDraggedItemData->extendedItemData());;
+        GT_IF_WITH_ASSERT((pDroppedKAData != nullptr) && (pDraggedItemKAData != nullptr))
         {
             // Check if the dropped item is a program stage. If not, item type should be calculated according to the parent program
             afTreeItemType droppedItemType = pDroppedOnItemData->m_itemType;

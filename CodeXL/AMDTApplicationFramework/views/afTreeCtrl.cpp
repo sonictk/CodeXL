@@ -70,6 +70,11 @@ void afTreeCtrl::mouseMoveEvent(QMouseEvent* pEvent)
 
             if (m_isDragging)
             {
+                m_draggedItemsList.clear();
+                foreach(QTreeWidgetItem* pItem, selectedItems())
+                {
+                    m_draggedItemsList << pItem;
+                }
                 PerformDrag();
             }
         }
@@ -78,16 +83,12 @@ void afTreeCtrl::mouseMoveEvent(QMouseEvent* pEvent)
 
 void afTreeCtrl::PerformDrag()
 {
-    m_draggedItemsList.clear();
-
     if (selectedItems().size() > 0)
     {
         QTreeWidgetItem* pSelectedItem = selectedItems()[0];
         if (pSelectedItem != nullptr)
         {
             QMimeData* pMimeData = new QMimeData;
-
-#pragma message ("TODO: do not submit before testing thie code:")
             QString plainText = pSelectedItem->text(0);
             pMimeData->setText(plainText);
             QByteArray array(plainText.toStdString().c_str());
@@ -103,7 +104,10 @@ void afTreeCtrl::PerformDrag()
             {
                 foreach(QTreeWidgetItem* pItem, selectedItems())
                 {
-                    m_draggedItemsList << pItem;
+                    if (!m_draggedItemsList.contains(pItem))
+                    {
+                        m_draggedItemsList << pItem;
+                    }
                 }
             }
 
@@ -134,6 +138,12 @@ void afTreeCtrl::AutoScroll()
             m_pDragTimer->stop();
         }
     }
+}
+
+
+void afTreeCtrl::ClearDraggedItems()
+{
+    m_draggedItemsList.clear();
 }
 
 void afTreeCtrl::dragEnterEvent(QDragEnterEvent* pEvent)
