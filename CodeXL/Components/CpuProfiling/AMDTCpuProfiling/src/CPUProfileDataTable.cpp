@@ -37,6 +37,8 @@
 #include <inc/CPUProfileDataTableItem.h>
 #include <AMDTSharedProfiling/inc/StringConstants.h>
 
+#include<memory>
+
 #define MAX_COLUMN_WIDTH 350
 
 // Static members:
