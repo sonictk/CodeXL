@@ -19,6 +19,7 @@
 #include <AMDTApplicationComponents/Include/acItemDelegate.h>
 #include <AMDTApplicationComponents/Include/acMessageBox.h>
 #include <AMDTApplicationComponents/Include/acTableWidgetItem.h>
+#include <AMDTCpuProfilingDataAccess/inc/AMDTCpuProfilingDataAccess.h>
 
 // AMDTApplicationFramework:
 #include <AMDTApplicationFramework/Include/afGlobalVariablesManager.h>
@@ -37,8 +38,6 @@
 #include <inc/CPUProfileDataTableItem.h>
 #include <AMDTSharedProfiling/inc/StringConstants.h>
 
-#include<memory>
-
 #define MAX_COLUMN_WIDTH 350
 
 // Static members:
@@ -49,7 +48,7 @@ bool CPUProfileDataTable::m_CLUNoteShown = true;
 
 CPUProfileDataTable::CPUProfileDataTable(QWidget* pParent, const gtVector<CPUProfileDataTable::TableContextMenuActionType>& additionalContextMenuActions, SessionTreeNodeData* pSessionData)
     : acListCtrl(pParent, CP_CPU_TABLE_ROW_HEIGHT), m_pTableDisplaySettings(nullptr), m_pSessionDisplaySettings(nullptr),
-      m_pProfileReader(nullptr), m_pDisplaySessionData(pSessionData), m_pCLUDelegate(nullptr), m_pEmptyRowTableItem(nullptr),
+      m_pProfileReader(nullptr), m_cpuProfDataReader(nullptr), m_pDisplaySessionData(pSessionData), m_pCLUDelegate(nullptr), m_pEmptyRowTableItem(nullptr),
       m_pOtherSamplesRowItem(nullptr)
 {
     setSortingEnabled(true);
@@ -146,6 +145,32 @@ bool CPUProfileDataTable::fillListData()
         setRowHidden(newRowIndex, true);
     }
 
+    return true;
+}
+
+bool CPUProfileDataTable::displaySummaryData(shared_ptr<cxlProfileDataReader> pProfDbData, AMDTUInt32 mid)
+{
+    GT_IF_WITH_ASSERT(pProfDbData.get() != nullptr)
+    {
+        m_cpuProfDataReader = pProfDbData;
+
+        // clean the QWidget
+        clearContents();
+        setColumnCount(0);
+        setRowCount(0);
+
+        // set header 
+        bool rcHeaders = true;
+
+        if (horizontalHeader()->count() == 0)
+        {
+            rcHeaders = initializeListHeaders();
+            GT_ASSERT(rcHeaders);
+        }
+
+        bool rcData = FillTableSummaryData(mid);
+        GT_ASSERT(rcData);
+    }
     return true;
 }
 
@@ -412,6 +437,36 @@ bool CPUProfileDataTable::setHotSpotIndicatorValues()
     return retVal;
 }
 
+bool CPUProfileDataTable::tableHotSpotIndicatorChanged(const QString& text)
+{
+    int rc = false;
+
+    GT_IF_WITH_ASSERT((m_pSessionDisplaySettings != nullptr) && (m_pTableDisplaySettings != nullptr))
+    {
+        gtVector<AMDTProfileCounterDesc> counterDesc;
+        rc = m_cpuProfDataReader->GetSampledCountersList(counterDesc);
+
+        GT_ASSERT(rc);
+        
+        m_moduleNameIdMap.clear();
+
+        for (auto couters : counterDesc)
+        {
+            m_moduleNameIdMap.insert(std::pair<std::string, AMDTUInt32>(couters.m_name.asASCIICharArray(), couters.m_id));
+        }
+
+        // find the counter id
+
+        auto itr = m_moduleNameIdMap.find(text.toStdString());
+        if (m_moduleNameIdMap.end() != itr)
+        {
+            // Build the hot spot indicator map and update the table values:
+            HandleHotSpotIndicatorChange(itr->second);
+        }
+    }
+    return true;
+}
+
 bool CPUProfileDataTable::organizeTableByHotSpotIndicator()
 {
     bool retVal = false;
@@ -469,9 +524,7 @@ bool CPUProfileDataTable::organizeTableByHotSpotIndicator()
         // Sort the table:
         sortTable();
     }
-
     return retVal;
-
 }
 
 void CPUProfileDataTable::sortTable()
@@ -1152,6 +1205,11 @@ void CPUProfileDataTable::onContextMenuAction()
             }
         }
     }
+}
+
+bool CPUProfileDataTable::HandleHotSpotIndicatorChange(AMDTUInt32 mid)
+{
+    return displaySummaryData(m_cpuProfDataReader, mid);
 }
 
 bool CPUProfileDataTable::HandleHotSpotIndicatorSet()

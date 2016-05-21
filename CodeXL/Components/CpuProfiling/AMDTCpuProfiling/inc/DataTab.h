@@ -32,10 +32,11 @@
 
 // Local
 #include <inc/StdAfx.h>
-
 #include <AMDTCpuProfilingRawData/inc/CpuProfileReader.h>
-
+#include <AMDTCpuProfilingDataAccess/inc/AMDTCpuProfilingDataAccess.h>
 #include <inc/DisplayFilter.h>
+
+#include<memory>
 
 // Threshold for CLU
 #define THRESHOLD_CLU_UTIL_LOW  1
@@ -212,8 +213,9 @@ protected slots:
 protected:
 
     /// Data:
-    CpuProfileReader* m_pProfileReader;
-    CpuProfileInfo*   m_pProfileInfo;
+    CpuProfileReader*                   m_pProfileReader;
+    CpuProfileInfo*                     m_pProfileInfo;
+    shared_ptr<cxlProfileDataReader>    m_pCpuProfDataReader;
 
     /// Tree item data:
     afApplicationTreeItemData* m_pDisplayedSessionItemData;

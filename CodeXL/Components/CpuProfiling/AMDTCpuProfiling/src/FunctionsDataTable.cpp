@@ -52,6 +52,155 @@ FunctionsDataTable::~FunctionsDataTable()
 {
 }
 
+bool FunctionsDataTable::setToolTip(int row,
+                                    QString samplePercent, 
+                                    QString modulePath)
+{
+    bool retVal = false;
+
+    GT_IF_WITH_ASSERT((m_cpuProfDataReader.get() != nullptr) &&
+        (m_pSessionDisplaySettings != nullptr) &&
+        (m_pTableDisplaySettings != nullptr))
+    {
+        QTableWidgetItem* pModuleNameItem = item(row, 2);
+
+        if (pModuleNameItem != nullptr)
+        {
+            pModuleNameItem->setToolTip(samplePercent);
+        }
+
+        pModuleNameItem = item(rowCount() - 1, 3);
+        if (pModuleNameItem != nullptr)
+        {
+            pModuleNameItem->setToolTip(modulePath);
+        }
+
+        retVal = true;
+    }
+
+    return retVal;
+}
+
+bool FunctionsDataTable::setModuleIcon(int row, 
+                                        const AMDTProfileModuleInfo& moduleInfo)
+{
+    bool retVal = false;
+
+    GT_IF_WITH_ASSERT((m_cpuProfDataReader.get() != nullptr) &&
+        (m_pSessionDisplaySettings != nullptr) &&
+        (m_pTableDisplaySettings != nullptr))
+    {
+        osFilePath iconFile;
+        iconFile.setFileName(moduleInfo.m_name);
+        iconFile.setFullPathFromString(moduleInfo.m_path);
+
+        QPixmap* pIcon = CPUProfileDataTable::moduleIcon(iconFile, true);
+
+        // Initialize the function row:
+        //initRowItems(rowIndex, functionItemStringList, Qt::AlignVCenter | Qt::AlignLeft);
+        QTableWidgetItem* pNameItem = item(row, 0);
+
+        if (pNameItem != nullptr)
+        {
+            // Set the original position in function vector:
+            pNameItem->setData(FunctionDataIndexRole, QVariant(0));
+
+            if (pIcon != nullptr)
+            {
+                pNameItem->setIcon(QIcon(*pIcon));
+            }
+        }
+
+        retVal = true;
+    }
+
+    return retVal;
+}
+
+bool FunctionsDataTable::delegateSamplePercent()
+{
+    bool retVal = false;
+
+    GT_IF_WITH_ASSERT((m_cpuProfDataReader.get() != nullptr) &&
+        (m_pSessionDisplaySettings != nullptr) &&
+        (m_pTableDisplaySettings != nullptr))
+    {
+        acTablePercentItemDelegate* pDelegate = new acTablePercentItemDelegate();
+
+        pDelegate->SetOwnerTable(this);
+        setItemDelegateForColumn(2, pDelegate);
+
+        retVal = true;
+    }
+
+    return retVal;
+}
+
+bool FunctionsDataTable::FillTableSummaryData(AMDTUInt32 mid)
+{
+    bool retVal = false;
+
+    GT_IF_WITH_ASSERT((m_cpuProfDataReader.get() != nullptr) && 
+                      (m_pSessionDisplaySettings != nullptr) && 
+                      (m_pTableDisplaySettings != nullptr))
+    {
+        // get samples for Data cache access events
+        AMDTProfileSessionInfo sessionInfo;
+
+        bool rc = m_cpuProfDataReader->GetProfileSessionInfo(sessionInfo);
+        GT_ASSERT(rc);
+
+        AMDTProfileDataVec funcProfileData;
+        rc = m_cpuProfDataReader->GetFunctionSummary(mid, funcProfileData);
+        GT_ASSERT(rc);
+
+        bool isSorting = isSortingEnabled();
+        if (true == isSorting)
+        {
+            setSortingEnabled(false);
+        }
+
+        for (auto profData : funcProfileData)
+        {
+            // create QstringList to hold the values
+            QStringList list;
+            list << profData.m_name.asASCIICharArray();
+
+            QVariant sampleCount(profData.m_sampleValue.at(0).m_sampleCount);
+            list << sampleCount.toString();
+
+            QVariant sampleCountPercent(profData.m_sampleValue.at(0).m_sampleCountPercentage);
+            list << QString::number(profData.m_sampleValue.at(0).m_sampleCountPercentage, 'f', 2);
+
+            int row = rowCount();
+
+            AMDTProfileModuleInfoVec procInfo;
+            rc = m_cpuProfDataReader->GetModuleInfo(AMDT_PROFILE_MAX_VALUE, profData.m_moduleId, procInfo);
+            GT_ASSERT(rc);
+            list << procInfo.at(0).m_name.asASCIICharArray();
+
+            addRow(list, nullptr);
+
+            QString modulePath(procInfo.at(0).m_path.asASCIICharArray());
+
+            rc = setToolTip(row, sampleCountPercent.toString(), modulePath);
+            if (true == rc)
+            {
+                rc = setModuleIcon(row, procInfo.at(0));
+            }
+
+            if (true == rc)
+            {
+               rc = delegateSamplePercent();
+            }
+        }
+        setSortingEnabled(true);
+
+        retVal = true;
+    }
+    
+    return retVal;
+}
 bool FunctionsDataTable::fillListData()
 {
     bool retVal = false;
@@ -554,11 +703,16 @@ const CpuProfileModule* FunctionsDataTable::findModuleHandler(const osFilePath& 
     return pRetVal;
 }
 
+bool FunctionsDataTable::HandleHotSpotIndicatorChange(AMDTUInt32 mid)
+{
+    return displaySummaryData(m_cpuProfDataReader,  mid);
+}
+
 bool FunctionsDataTable::HandleHotSpotIndicatorSet()
 {
     // call directly to setHotSpotIndicatorValues, without calling to displayProfileData first
     // boolean to function has no meaning
-    return setHotSpotIndicatorValues();
+    return displaySummaryData(m_cpuProfDataReader);
 }
 
 bool FunctionsDataTable::buildHotSpotIndicatorMap()

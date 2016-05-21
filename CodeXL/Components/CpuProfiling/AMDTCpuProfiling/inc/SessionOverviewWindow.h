@@ -79,6 +79,7 @@ protected slots:
     void openModulesView();
     void openFunctionsView();
     void onAfterHotSpotComboChanged(const QString& text);
+    void onHotSpotComboChange(const QString& text);
     void onHotSpotComboChanged(const QString& text);
     void onTableItemActivated(QTableWidgetItem* pActivateItem);
     void onTableContextMenuActionTriggered(CPUProfileDataTable::TableContextMenuActionType actionType, QTableWidgetItem* pTableItem);
@@ -91,6 +92,7 @@ private:
     void activateTableItem(QTableWidgetItem* pActivateItem, CPUProfileDataTable* pDataTable);
 
     bool displaySessionProperties();
+    bool displaySummaryDataTables();
     bool displaySessionDataTables();
     bool updateTablesHotspotIndicator();
     bool fillHotspotIndicatorCombo();

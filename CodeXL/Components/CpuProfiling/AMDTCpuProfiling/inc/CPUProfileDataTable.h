@@ -9,7 +9,7 @@
 #ifndef __CPUPROFILEDATATABLE_H
 #define __CPUPROFILEDATATABLE_H
 
-// Infra:
+// INFRA INCLUDES
 #include <AMDTBaseTools/Include/gtMap.h>
 #include <AMDTBaseTools/Include/gtPtrVector.h>
 #include <AMDTOSWrappers/Include/osFilePath.h>
@@ -17,16 +17,22 @@
 #include <AMDTApplicationComponents/Include/acTableWidgetItem.h>
 #include <AMDTApplicationComponents/Include/acUserRoles.h>
 
+// BACKEND INCLUDES 
+#include <AMDTCpuProfilingDataAccess/inc/AMDTCpuProfilingDataAccess.h>
+
 #include <AMDTCpuProfilingRawData/inc/CpuProfileReader.h>
 
-// Local:
+// LOCAL INCLUDES
 #include <inc/StdAfx.h>
 #include <inc/DisplayFilter.h>
 
-class CpuProfileReader;
-class CpuProfileModule;
-class CpuProfileFunction;
+// STANDARD INCLUDES
+#include <memory>
+
 class CPUProfileDataTable;
+class CpuProfileFunction;
+class CpuProfileModule;
+class CpuProfileReader;
 class SessionTreeNodeData;
 class acTablePercentItemDelegate;
 
@@ -37,7 +43,7 @@ class acTablePercentItemDelegate;
 #define SAMPLE_INDEX_IN_TABLE_PROCESS      2
 #define SAMPLE_INDEX_IN_TABLE_MODULE       1
 #define SAMPLE_INDEX_IN_TABLE_FUNCTION     2
-
+#define DEFAULT_MID 0x03000040
 #define NUMBER_OF_HOTSPOT_ROWS  5
 
 #if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
@@ -110,6 +116,10 @@ public:
     /// \return true / false is succeeded or failed
     bool displayProfileData(CpuProfileReader* pProfileReader);
 
+    // 
+    bool displaySummaryData(shared_ptr<cxlProfileDataReader> pProfDataReader,
+                            AMDTUInt32 mid = DEFAULT_MID);
+
     /// Sort the table according to the requested display filter:
     void sortTable();
 
@@ -127,6 +137,8 @@ public:
 
     /// Organize the table a the hot spot indicator values:
     bool organizeTableByHotSpotIndicator();
+
+    bool tableHotSpotIndicatorChanged(const QString& text);
 
     /// Set the table display filter
     /// \param pTableSettings the new table display settings
@@ -181,6 +193,11 @@ protected:
     /// Fill the list data according to the requested item:
     virtual bool fillListData();
 
+    // TODO: will make it pure virtual
+    // Fill the Summary Tables with the hottest 
+    // five functions details 
+    virtual bool FillTableSummaryData(AMDTUInt32 mid) { mid = mid;  return true; }
+
     /// Build the map of the current hot spot values. The function is virtual, since functions table for instance,
     /// needs to implement it in a more performance wise implementation
     /// \return true / false is succeeded or failed
@@ -188,6 +205,9 @@ protected:
 
     /// handles event of changing the hot-spot indicator combobox
     virtual bool HandleHotSpotIndicatorSet();
+
+    // handle the display when hotspot column change
+    virtual bool HandleHotSpotIndicatorChange(AMDTUInt32 mid);
 
     /// Sets the list control columns according to the current displayed item:
     bool initializeListHeaders();
@@ -261,9 +281,10 @@ protected slots:
 
 protected:
 
-    TableDisplaySettings* m_pTableDisplaySettings;                ///< Represents the currently displayed table filter
-    SessionDisplaySettings* m_pSessionDisplaySettings;        ///< Represents the currently displayed session filter
-    CpuProfileReader* m_pProfileReader;                      ///< A pointer to the session profile reader
+    TableDisplaySettings*               m_pTableDisplaySettings;        //Represents the currently displayed table filter
+    SessionDisplaySettings*             m_pSessionDisplaySettings;      //Represents the currently displayed session filter
+    CpuProfileReader*                   m_pProfileReader;               //A pointer to the session profile reader
+    shared_ptr<cxlProfileDataReader>    m_cpuProfDataReader;            //A pointer to database reader
 
     // Summarize the total value of sample counts:
     double m_totalSampleCount;
@@ -305,6 +326,8 @@ protected:
 
     gtUInt32 m_elapsedTime[CPU_TABLE_MAX_VALUES];
     gtUInt32 m_startTime[CPU_TABLE_MAX_VALUES];
+
+    std::map<std::string, AMDTUInt32> m_moduleNameIdMap;
 };
 
 #endif //__CPUPROFILEDATATABLE_H

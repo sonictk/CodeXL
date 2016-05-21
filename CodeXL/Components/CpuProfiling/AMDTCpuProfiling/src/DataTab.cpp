@@ -55,7 +55,7 @@
 
 
 DataTab::DataTab(QWidget* pParent, CpuSessionWindow* pParentSessionWindow, const QString& sessionDir)
-    : QMainWindow(pParent), m_pProfileReader(nullptr), m_pDisplayedSessionItemData(nullptr), m_exportString(""), m_pList(nullptr),
+    : QMainWindow(pParent), m_pProfileReader(nullptr), m_pCpuProfDataReader(nullptr), m_pDisplayedSessionItemData(nullptr), m_exportString(""), m_pList(nullptr),
       m_indexOffset(0), m_pMenu(nullptr), m_pColumnMenu(nullptr), m_selectText(""),
       m_precision(0), m_sessionDir(""), m_shownTotal(0), m_pHintLabel(nullptr), m_pHintFrame(nullptr), m_pDisplaySettings(nullptr),
       m_pDisplaySettingsAction(nullptr), m_pTopToolbar(nullptr), m_pParentSessionWindow(pParentSessionWindow),
@@ -63,8 +63,9 @@ DataTab::DataTab(QWidget* pParent, CpuSessionWindow* pParentSessionWindow, const
 {
     GT_IF_WITH_ASSERT(pParentSessionWindow != nullptr)
     {
-        m_pProfileReader = &pParentSessionWindow->profileReader();
-        m_pProfileInfo = m_pProfileReader->getProfileInfo();
+        m_pProfileReader        = &pParentSessionWindow->profileReader();
+        m_pCpuProfDataReader    = pParentSessionWindow->profDbReader();
+        m_pProfileInfo          = m_pProfileReader->getProfileInfo();
     }
 
     IntializeCLUNoteString();

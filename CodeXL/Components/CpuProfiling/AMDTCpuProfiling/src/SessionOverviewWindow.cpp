@@ -119,7 +119,7 @@ bool SessionOverviewWindow::displaySession()
     initDisplayFilters();
 
     // Display the session data table:
-    bool rcData = displaySessionDataTables();
+    bool rcData = displaySummaryDataTables();
     GT_ASSERT(rcData);
 
     // Display the session HTML properties:
@@ -232,7 +232,8 @@ void SessionOverviewWindow::setSessionWindowLayout()
     pModulesHeader->setFont(boldFont);
 
     // Connect the hot spot combo to it's slot:
-    rc = connect(this, SIGNAL(hotspotIndicatorChanged(const QString&)), this, SLOT(onAfterHotSpotComboChanged(const QString&)));
+    //rc = connect(this, SIGNAL(hotspotIndicatorChanged(const QString&)), this, SLOT(onAfterHotSpotComboChanged(const QString&)));
+    rc = connect(this, SIGNAL(hotspotIndicatorChanged(const QString&)), this, SLOT(onHotSpotComboChange(const QString&)));
     GT_ASSERT(rc);
 
     int colSpan = m_isMultiProcesses ? 2 : 4;
@@ -500,6 +501,19 @@ bool SessionOverviewWindow::displaySessionProperties()
     return retVal;
 }
 
+bool SessionOverviewWindow::displaySummaryDataTables()
+{
+    GT_IF_WITH_ASSERT((m_pModulesTable != nullptr) && 
+                        (m_pProcessesTable != nullptr) && 
+                        (m_pFunctionsTable != nullptr) && 
+                        (m_pProcessesHeader != nullptr))
+    {
+        bool rc = m_pFunctionsTable->displaySummaryData(m_pCpuProfDataReader);
+        GT_ASSERT(rc);
+    }
+    return true;
+}
+
 bool SessionOverviewWindow::displaySessionDataTables()
 {
     bool retVal = false;
@@ -563,6 +577,8 @@ bool SessionOverviewWindow::updateTablesHotspotIndicator()
 
         // Display the data according to the requested filter:
         rc = m_pFunctionsTable->organizeTableByHotSpotIndicator() && retVal;
+
+
         retVal = retVal && rc;
     }
 
@@ -726,6 +742,14 @@ void SessionOverviewWindow::onHotSpotComboChanged(const QString& text)
     emit hotspotIndicatorChanged(text);
 }
 
+void SessionOverviewWindow::onHotSpotComboChange(const QString& text)
+{
+    (QString)text;
+
+    bool rc = m_pFunctionsTable->tableHotSpotIndicatorChanged(text);
+    GT_ASSERT(rc);
+}
+
 void SessionOverviewWindow::onAfterHotSpotComboChanged(const QString& text)
 {
     SessionDisplaySettings* pSessionDisplaySettings = CurrentSessionDisplaySettings();
@@ -785,6 +809,7 @@ void SessionOverviewWindow::onAfterHotSpotComboChanged(const QString& text)
     bool rc = updateTablesHotspotIndicator();
 
     GT_ASSERT(rc);
+
 }
 
 void SessionOverviewWindow::initDisplayFilters()
@@ -1476,7 +1501,7 @@ void SessionOverviewWindow::UpdateTableDisplay(unsigned int updateType)
     (void)(updateType); // unused
 
     // Display the session data table:
-    bool rcData = displaySessionDataTables();
+    bool rcData = displaySummaryDataTables();
     GT_ASSERT(rcData);
 
     // Display the session HTML properties:

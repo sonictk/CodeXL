@@ -24,6 +24,7 @@
 // Infra:
 #include <AMDTOSWrappers/Include/osFilePath.h>
 #include <AMDTExecutableFormat/inc/ExecutableFile.h>
+#include <AMDTCpuProfilingDataAccess/inc/AMDTCpuProfilingDataAccess.h>
 
 // AMDTApplicationFramework:
 #include <AMDTApplicationFramework/Include/views/afApplicationTreeItemData.h>
@@ -33,6 +34,7 @@
 
 // Local:
 #include <inc/DataTab.h>
+#include <memory>
 
 // need to undef Bool after all includes so the moc will compile in Linux
 #undef Bool
@@ -82,6 +84,7 @@ public:
 
     /// Expose information:
     CpuProfileReader& profileReader() { return m_profileReader; }
+    shared_ptr<cxlProfileDataReader>& profDbReader() { return m_pCpuProfDataRd; }
 
     bool displaySessionSource();
     SessionDisplaySettings* sessionDisplaySettings() {return &m_sessionDisplayFilter;};
@@ -148,13 +151,16 @@ protected:
 
 private:
 
+    bool openDataReader();
+
     /// Session tree item data:
     const afApplicationTreeItemData* m_pSessionTreeItemData;
 
     /// Project/Profile related data structures
-    CpuProfileReader     m_profileReader;
-    CpuProfileInfo*      m_pProfileInfo;
-    osFilePath          m_sessionFile;
+    CpuProfileReader                    m_profileReader;
+    shared_ptr<cxlProfileDataReader>    m_pCpuProfDataRd;
+    CpuProfileInfo*                     m_pProfileInfo;
+    osFilePath                          m_sessionFile;
 
     SessionDisplaySettings m_sessionDisplayFilter;
 

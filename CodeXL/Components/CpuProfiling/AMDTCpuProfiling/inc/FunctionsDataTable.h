@@ -81,6 +81,8 @@ protected:
     /// Fill the list data according to the requested item:
     bool fillListData();
 
+    bool FillTableSummaryData(AMDTUInt32 mid);
+
     /// Build the map of the current hot spot values.
     /// The values are taken from m_functionsInfosVec in order to save the
     /// calculation of the whole table once changing the hot spot indicator
@@ -91,6 +93,15 @@ protected:
     /// \return true / false is succeeded or failed
     virtual bool HandleHotSpotIndicatorSet();
 
+    virtual bool HandleHotSpotIndicatorChange(AMDTUInt32 mid);
+
+    virtual bool setToolTip(int row,
+                            QString samplePercent,
+                            QString modulePath);
+
+    virtual bool delegateSamplePercent();
+
+    virtual bool setModuleIcon(int row, const AMDTProfileModuleInfo& moduleInfo);
     /// Add all the function items for the module "pid"
     /// \pModule - the module structure
     /// \moduleFilePath - module file path

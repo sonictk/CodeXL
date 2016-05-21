@@ -26,6 +26,7 @@
 #include <AMDTOSWrappers/Include/osDebugLog.h>
 #include <AMDTOSWrappers/Include/osProcess.h>
 #include <AMDTApplicationComponents/Include/acFunctions.h>
+#include <AMDTCpuProfilingDataAccess/inc/AMDTCpuProfilingDataAccess.h>
 
 // AMDTApplicationFramework:
 #include <AMDTApplicationFramework/src/afUtils.h>
@@ -103,6 +104,7 @@ CpuSessionWindow::~CpuSessionWindow()
 
     delete m_pTabWidget;
     m_profileReader.close();
+    m_pCpuProfDataRd->CloseProfileData();
     m_pProfileInfo = nullptr;
 }
 
@@ -137,6 +139,50 @@ bool CpuSessionWindow::initialize()
 void CpuSessionWindow::OnBeforeDeletion()
 {
     m_profileReader.close();
+    m_pCpuProfDataRd->CloseProfileData();
+}
+
+bool CpuSessionWindow::openDataReader()
+{
+    bool result = false;
+    GT_IF_WITH_ASSERT((nullptr != m_pTabWidget) && (nullptr != m_pSessionTreeItemData))
+    {
+        // TODO:  to get the file path 
+        m_sessionFile = m_pSessionTreeItemData->m_filePath;
+
+        // get Session directory Path
+        gtString fileDir = m_sessionFile.fileDirectoryAsString();
+
+        // set directory path for Db file
+        osFilePath dbFilePath;
+        dbFilePath.setFileDirectory(fileDir);
+
+        // set file path 
+        gtString fileName;
+        result = m_sessionFile.getFileName(fileName);
+        if (result)
+        {
+            dbFilePath.setFileName(fileName);
+            dbFilePath.setFileExtension(L"cxldb");
+        }
+
+        // validate if file exists
+        if (!dbFilePath.isEmpty())
+        {
+            shared_ptr<cxlProfileDataReader> reader(new cxlProfileDataReader);
+            result = reader->OpenProfileData(dbFilePath.asString());
+            if (true == result)
+            {
+                m_pCpuProfDataRd = reader;
+                // TODO: debug code need to be removed
+                AMDTProfileSessionInfo sessionInfo;
+
+                result = m_pCpuProfDataRd->GetProfileSessionInfo(sessionInfo);
+            }
+        }
+    }
+    return result;
+
 }
 
 bool CpuSessionWindow::display()
@@ -144,6 +190,8 @@ bool CpuSessionWindow::display()
     bool retVal = false;
     GT_IF_WITH_ASSERT((nullptr != m_pTabWidget) && (nullptr != m_pSessionTreeItemData))
     {
+        openDataReader();
+
         m_sessionFile = m_pSessionTreeItemData->m_filePath;
 
         // Close the profile reader before opening it:
@@ -805,6 +853,7 @@ void CpuSessionWindow::onBeforeSessionRename(SessionTreeNodeData* pAboutToRename
 
             // Close the profile reader (in order to release the file handler, to allow rename of the file):
             m_profileReader.close();
+            m_pCpuProfDataRd->CloseProfileData();
         }
     }
 }
