@@ -187,6 +187,8 @@ protected:
     /// \return true on success false on failure
     bool setHotSpotIndicatorValues();
 
+    virtual bool delegateSamplePercent(int colNum);
+
     // Overrides acListCtrl:
     virtual QTableWidgetItem* allocateNewWidgetItem(const QString& text);
 

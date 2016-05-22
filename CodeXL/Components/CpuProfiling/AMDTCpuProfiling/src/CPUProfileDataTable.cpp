@@ -437,6 +437,26 @@ bool CPUProfileDataTable::setHotSpotIndicatorValues()
     return retVal;
 }
 
+bool CPUProfileDataTable::delegateSamplePercent(int colNum)
+{
+    bool retVal = false;
+
+    GT_IF_WITH_ASSERT((m_cpuProfDataReader.get() != nullptr) &&
+        (m_pSessionDisplaySettings != nullptr) &&
+        (m_pTableDisplaySettings != nullptr))
+    {
+        acTablePercentItemDelegate* pDelegate = new acTablePercentItemDelegate();
+
+        pDelegate->SetOwnerTable(this);
+        setItemDelegateForColumn(colNum, pDelegate);
+
+        retVal = true;
+    }
+
+    return retVal;
+}
+
+
 bool CPUProfileDataTable::tableHotSpotIndicatorChanged(const QString& text)
 {
     int rc = false;

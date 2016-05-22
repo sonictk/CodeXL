@@ -41,6 +41,10 @@ protected:
     /// Fill the list data according to the requested item:
     bool fillListData();
 
+    virtual bool HandleHotSpotIndicatorChange(AMDTUInt32 mid);
+
+    bool FillTableSummaryData(AMDTUInt32 mid);
+
     /// Add a module item to the table:
     /// \param process - the process to add
     /// \param pid - the process id

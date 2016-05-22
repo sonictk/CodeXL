@@ -510,6 +510,12 @@ bool SessionOverviewWindow::displaySummaryDataTables()
     {
         bool rc = m_pFunctionsTable->displaySummaryData(m_pCpuProfDataReader);
         GT_ASSERT(rc);
+
+        rc = m_pProcessesTable->displaySummaryData(m_pCpuProfDataReader);
+        GT_ASSERT(rc);
+
+        rc = m_pModulesTable->displaySummaryData(m_pCpuProfDataReader);
+        GT_ASSERT(rc);
     }
     return true;
 }
@@ -747,6 +753,12 @@ void SessionOverviewWindow::onHotSpotComboChange(const QString& text)
     (QString)text;
 
     bool rc = m_pFunctionsTable->tableHotSpotIndicatorChanged(text);
+    GT_ASSERT(rc);
+
+    rc = m_pProcessesTable->tableHotSpotIndicatorChanged(text);
+    GT_ASSERT(rc);
+
+    rc = m_pModulesTable->tableHotSpotIndicatorChanged(text);
     GT_ASSERT(rc);
 }
 

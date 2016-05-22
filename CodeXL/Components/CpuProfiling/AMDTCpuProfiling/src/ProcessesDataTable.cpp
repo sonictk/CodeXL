@@ -80,6 +80,82 @@ bool ProcessesDataTable::fillListData()
     retVal &= CPUProfileDataTable::fillListData();
     return retVal;
 }
+
+bool ProcessesDataTable::HandleHotSpotIndicatorChange(AMDTUInt32 mid)
+{
+    return displaySummaryData(m_cpuProfDataReader, mid);
+}
+
+bool ProcessesDataTable::FillTableSummaryData(AMDTUInt32 mid)
+{
+    bool retVal = false;
+
+    GT_IF_WITH_ASSERT((m_cpuProfDataReader.get() != nullptr) &&
+        (m_pSessionDisplaySettings != nullptr) &&
+        (m_pTableDisplaySettings != nullptr))
+    {
+        // get samples for Data cache access events
+        AMDTProfileSessionInfo sessionInfo;
+
+        bool rc = m_cpuProfDataReader->GetProfileSessionInfo(sessionInfo);
+        GT_ASSERT(rc);
+
+        AMDTProfileDataVec processProfileData;
+        rc = m_cpuProfDataReader->GetProcessSummary(mid, processProfileData);
+        GT_ASSERT(rc);
+
+        bool isSorting = isSortingEnabled();
+        if (true == isSorting)
+        {
+            setSortingEnabled(false);
+        }
+
+        for (auto profData : processProfileData)
+        {
+            // create QstringList to hold the values
+            QStringList list;
+            osFilePath modulePath(profData.m_name);
+            gtString filename;
+            gtString extName;
+            gtString seperator(L".");
+
+            rc = modulePath.getFileName(filename);
+            GT_ASSERT(rc);
+            rc = modulePath.getFileExtension(extName);
+            GT_ASSERT(rc);
+
+            filename += seperator;
+            filename += extName;
+
+            list << filename.asASCIICharArray();
+
+            list << QString::number(profData.m_id);
+
+            if (0 == profData.m_sampleValue.at(0).m_sampleCount)
+            {
+                continue;
+            }
+
+            QVariant sampleCount(profData.m_sampleValue.at(0).m_sampleCount);
+            list << sampleCount.toString();
+
+            QVariant sampleCountPercent(profData.m_sampleValue.at(0).m_sampleCountPercentage);
+            list << QString::number(profData.m_sampleValue.at(0).m_sampleCountPercentage, 'f', 2);
+
+            //int row = rowCount();
+
+            addRow(list, nullptr);
+
+            rc = delegateSamplePercent(3);
+        }
+        setSortingEnabled(true);
+
+        retVal = true;
+    }
+
+    return retVal;
+}
+
 bool ProcessesDataTable::addProcessItem(ProcessIdType pid, const CpuProfileProcess& process)
 {
     bool retVal = false;

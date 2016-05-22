@@ -99,7 +99,6 @@ protected:
                             QString samplePercent,
                             QString modulePath);
 
-    virtual bool delegateSamplePercent();
 
     virtual bool setModuleIcon(int row, const AMDTProfileModuleInfo& moduleInfo);
     /// Add all the function items for the module "pid"

@@ -117,24 +117,6 @@ bool FunctionsDataTable::setModuleIcon(int row,
     return retVal;
 }
 
-bool FunctionsDataTable::delegateSamplePercent()
-{
-    bool retVal = false;
-
-    GT_IF_WITH_ASSERT((m_cpuProfDataReader.get() != nullptr) &&
-        (m_pSessionDisplaySettings != nullptr) &&
-        (m_pTableDisplaySettings != nullptr))
-    {
-        acTablePercentItemDelegate* pDelegate = new acTablePercentItemDelegate();
-
-        pDelegate->SetOwnerTable(this);
-        setItemDelegateForColumn(2, pDelegate);
-
-        retVal = true;
-    }
-
-    return retVal;
-}
 
 bool FunctionsDataTable::FillTableSummaryData(AMDTUInt32 mid)
 {
@@ -166,6 +148,11 @@ bool FunctionsDataTable::FillTableSummaryData(AMDTUInt32 mid)
             QStringList list;
             list << profData.m_name.asASCIICharArray();
 
+            if (0 == profData.m_sampleValue.at(0).m_sampleCount)
+            {
+                continue;
+            }
+
             QVariant sampleCount(profData.m_sampleValue.at(0).m_sampleCount);
             list << sampleCount.toString();
 
@@ -191,7 +178,7 @@ bool FunctionsDataTable::FillTableSummaryData(AMDTUInt32 mid)
 
             if (true == rc)
             {
-               rc = delegateSamplePercent();
+               rc = delegateSamplePercent(2);
             }
         }
         setSortingEnabled(true);
