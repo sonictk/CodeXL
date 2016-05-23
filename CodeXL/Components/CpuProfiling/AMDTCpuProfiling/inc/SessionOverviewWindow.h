@@ -97,6 +97,8 @@ private:
     bool updateTablesHotspotIndicator();
     bool fillHotspotIndicatorCombo();
 
+    bool displaySessionExecutionDetails(afHTMLContent& content);
+    bool displaySessionProfileDetails(afHTMLContent& content);
     /// \brief Name:        setSessionWindowLayout
     /// \brief Description: Set the window layout
     /// \return void

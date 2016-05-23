@@ -342,51 +342,127 @@ void SessionOverviewWindow::setSessionWindowLayout()
     m_editActionsWidgetsList << m_pProcessesTable;
 }
 
-bool SessionOverviewWindow::displaySessionProperties()
+bool SessionOverviewWindow::displaySessionProfileDetails(afHTMLContent& content)
+{
+    bool retVal = true;
+    GT_IF_WITH_ASSERT((m_pDisplayedSessionItemData != nullptr) && (m_pFunctionsTable != nullptr))
+    {
+        CPUSessionTreeItemData* pSessionData = qobject_cast<CPUSessionTreeItemData*>(m_pDisplayedSessionItemData->extendedItemData());
+        GT_IF_WITH_ASSERT((pSessionData != nullptr) && (m_pPropertiewView != nullptr) && (m_pCpuProfDataReader != nullptr) && (m_pProfileInfo != nullptr))
+        {
+            AMDTProfileSessionInfo sessionInfo;
+            m_pCpuProfDataReader->GetProfileSessionInfo(sessionInfo);
+
+            // add execution header
+            //afHTMLContent content;
+            //gtString htmlStr;
+            content.addHTMLItem(afHTMLContent::AP_HTML_TITLE, CP_overviewPageProfileDetailsHeader);
+
+            gtString eventsCaption = CP_overviewPageMonitoredEventsHeader;
+            eventsCaption.prepend(L"<b>");
+            eventsCaption.append(L"</b>");
+
+            gtString firstColStr, secondColStr;
+            firstColStr.makeEmpty();
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageSessionType, sessionInfo.m_sessionType.asCharArray());
+            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr, eventsCaption);
+
+            gtVector<gtString> eventsStrVector;
+            secondColStr.makeEmpty();
+            bool rc = buildEventsStringsVector(eventsStrVector, secondColStr);
+            GT_ASSERT(rc);
+
+            firstColStr.makeEmpty();
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageProfileStartTime, sessionInfo.m_sessionStartTime.asCharArray());
+            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr, secondColStr, 10);
+
+            firstColStr.makeEmpty();
+            secondColStr.makeEmpty();
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageProfileEndTime, sessionInfo.m_sessionEndTime.asCharArray());
+            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr, secondColStr, 10);
+
+            firstColStr.makeEmpty();
+            gtString durationStr = acDurationAsString(pSessionData->m_profileDuration);
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageProfileDuration, durationStr.asCharArray());
+            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
+
+            firstColStr.makeEmpty();
+            firstColStr.appendFormattedString(L"<b>%ls: </b>", CP_overviewPageProfileCPUDetails);
+            unsigned int cpuFamily = sessionInfo.m_cpuFamily;
+            unsigned int cpuModel = sessionInfo.m_cpuModel;
+            // TODO: aalok
+            unsigned int cpuCount = 0;
+            firstColStr.appendFormattedString(CP_overviewPageProfileCPUDetailsStr, cpuFamily, cpuModel, cpuCount);
+            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
+
+#if 0 // aalok
+            firstColStr.makeEmpty();
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %d", CP_overviewPageTotalProcesses, m_pProfileReader->getProcessMap()->size());
+            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
+#endif
+
+            firstColStr.makeEmpty();
+            int threadsCount = m_pFunctionsTable->amountOfThreads();
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %d", CP_overviewPageTotalThreads, threadsCount);
+            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
+
+            //content.toString(htmlStr);
+            //m_pPropertiewView->setHtml(acGTStringToQString(htmlStr));
+            retVal = true;
+        }
+    }
+    return retVal;
+}
+
+bool SessionOverviewWindow::displaySessionExecutionDetails(afHTMLContent& content)
 {
     bool retVal = false;
     GT_IF_WITH_ASSERT((m_pDisplayedSessionItemData != nullptr) && (m_pFunctionsTable != nullptr))
     {
         CPUSessionTreeItemData* pSessionData = qobject_cast<CPUSessionTreeItemData*>(m_pDisplayedSessionItemData->extendedItemData());
-        GT_IF_WITH_ASSERT((pSessionData != nullptr) && (m_pPropertiewView != nullptr) && (m_pProfileReader != nullptr) && (m_pProfileInfo != nullptr))
+        GT_IF_WITH_ASSERT((pSessionData != nullptr) && 
+                            (m_pPropertiewView != nullptr) && 
+                            (m_pCpuProfDataReader.get() != nullptr) && 
+                            (m_pProfileInfo != nullptr))
         {
-            // Get the profile info:
-            CpuProfileInfo* pProfileInfo = m_pProfileReader->getProfileInfo();
+            AMDTProfileSessionInfo sessionInfo;
+            m_pCpuProfDataReader->GetProfileSessionInfo(sessionInfo);
 
-            afHTMLContent content;
-            gtString htmlStr;
+            //// add execution header
+            //afHTMLContent content;
+            //gtString htmlStr;
             content.addHTMLItem(afHTMLContent::AP_HTML_TITLE, CP_overviewPageExecutionHeader);
 
             gtString firstColStr, secondColStr;
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageTargetPath, acQStringToGTString(pSessionData->m_exeFullPath).asCharArray());
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageTargetPath, sessionInfo.m_targetAppPath.asCharArray());
             content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
 
             firstColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageWorkingDirectory, acQStringToGTString(pSessionData->m_workingDirectory).asCharArray());
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageWorkingDirectory, sessionInfo.m_targetAppWorkingDir.asCharArray());
             content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
 
             firstColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageDataFolder, pSessionData->SessionDir().directoryPath().asString().asCharArray());
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageDataFolder, sessionInfo.m_sessionDir.asCharArray());
             content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
 
             firstColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageCommandLineArgs, acQStringToGTString(pSessionData->m_commandArguments).asCharArray());
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageCommandLineArgs, sessionInfo.m_targetAppCmdLineArgs.asCharArray());
             content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
 
             firstColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageEnvVars, pSessionData->m_envVariables.asCharArray());
+            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageEnvVars, sessionInfo.m_targetAppEnvVars.asCharArray());
             content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
 
             secondColStr.makeEmpty();
             firstColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> 0x%llx", CP_overviewPageProfileCPUAffinity, pSessionData->m_startAffinity);
+            firstColStr.appendFormattedString(L"<b>%ls:</b> 0x%llx", CP_overviewPageProfileCPUAffinity, sessionInfo.m_coreAffinity);
             gtString scopeStr = PM_STR_ProfileScopeSingleApplication;
 
-            if (pSessionData->m_profileScope == PM_PROFILE_SCOPE_SYS_WIDE)
+            if (sessionInfo.m_sessionScope == PM_PROFILE_SCOPE_SYS_WIDE)
             {
                 scopeStr = PM_STR_ProfileScopeSystemWide;
             }
-            else if (pSessionData->m_profileScope == PM_PROFILE_SCOPE_SYS_WIDE_FOCUS_ON_EXE)
+            else if (sessionInfo.m_sessionScope == PM_PROFILE_SCOPE_SYS_WIDE_FOCUS_ON_EXE)
             {
                 scopeStr = PM_STR_ProfileScopeSystemWideWithFocus;
             }
@@ -398,33 +474,34 @@ bool SessionOverviewWindow::displaySessionProperties()
             firstColStr.makeEmpty();
             secondColStr.makeEmpty();
 
-            if (pProfileInfo->m_isCSSEnabled)
+            if (sessionInfo.m_cssEnabled)
             {
                 gtString cssSupportFpoFormattedStr;
                 const wchar_t* pCssScopeStr = nullptr;
 
 #if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
 
-                switch (pProfileInfo->m_cssScope)
+                switch (sessionInfo.m_unwindScope)
                 {
-                    case CP_CSS_SCOPE_USER:
-                        pCssScopeStr = _T(CP_STR_cpuProfileProjectSettingsCallStackUserSpace);
-                        break;
+                case CP_CSS_SCOPE_USER:
+                    pCssScopeStr = _T(CP_STR_cpuProfileProjectSettingsCallStackUserSpace);
+                    break;
 
-                    case CP_CSS_SCOPE_KERNEL:
-                        pCssScopeStr = _T(CP_STR_cpuProfileProjectSettingsCallStackKernelSpace);
-                        break;
+                case CP_CSS_SCOPE_KERNEL:
+                    pCssScopeStr = _T(CP_STR_cpuProfileProjectSettingsCallStackKernelSpace);
+                    break;
 
-                    case CP_CSS_SCOPE_ALL:
-                        pCssScopeStr = _T(CP_STR_cpuProfileProjectSettingsCallStackUserKernelSpaces);
-                        break;
+                case CP_CSS_SCOPE_ALL:
+                    pCssScopeStr = _T(CP_STR_cpuProfileProjectSettingsCallStackUserKernelSpaces);
+                    break;
 
-                    case CP_CSS_SCOPE_UNKNOWN:
-                        break;
+                case CP_CSS_SCOPE_UNKNOWN:
+                    break;
                 }
 
-                const wchar_t* pCssSupportFpoStr = pProfileInfo->m_isCssSupportFpo ? L"On" : L"Off";
+                const wchar_t* pCssSupportFpoStr = sessionInfo.m_cssFPOEnabled ? L"On" : L"Off";
                 cssSupportFpoFormattedStr.appendFormattedString(CP_overviewCallStackInformationFpoSubstr, pCssSupportFpoStr);
+
 #endif // AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
 
                 gtString cssScopeFormattedStr;
@@ -435,70 +512,42 @@ bool SessionOverviewWindow::displaySessionProperties()
                 }
 
                 secondColStr.appendFormattedString(CP_overviewCallStackInformationBold, cssScopeFormattedStr.asCharArray(),
-                                                   pProfileInfo->m_cssUnwindDepth,
-                                                   pSessionData->m_cssInterval,
-                                                   cssSupportFpoFormattedStr.asCharArray());
+                    sessionInfo.m_unwindDepth,
+                    pSessionData->m_cssInterval,
+                    cssSupportFpoFormattedStr.asCharArray());
             }
 
-            const wchar_t* pBoolStr = pProfileInfo->m_isCSSEnabled ? L"True" : L"False";
+            const wchar_t* pBoolStr = sessionInfo.m_cssEnabled ? L"True" : L"False";
             firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewCallStackSampling, pBoolStr);
             content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr, secondColStr);
             content.addHTMLItem(afHTMLContent::AP_HTML_LINE, L"<br>");
 
-
-            content.addHTMLItem(afHTMLContent::AP_HTML_TITLE, CP_overviewPageProfileDetailsHeader);
-
-            gtString eventsCaption = CP_overviewPageMonitoredEventsHeader;
-            eventsCaption.prepend(L"<b>");
-            eventsCaption.append(L"</b>");
-
-            firstColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageSessionType, acQStringToGTString(pSessionData->m_profileTypeStr).asCharArray());
-            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr, eventsCaption);
-
-            gtVector<gtString> eventsStrVector;
-            secondColStr.makeEmpty();
-            bool rc = buildEventsStringsVector(eventsStrVector, secondColStr);
-            GT_ASSERT(rc);
-
-            firstColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageProfileStartTime, pProfileInfo->m_profStartTime.asCharArray());
-            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr, secondColStr, 10);
-
-            firstColStr.makeEmpty();
-            secondColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageProfileEndTime, pProfileInfo->m_profEndTime.asCharArray());
-            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr, secondColStr, 10);
-
-            firstColStr.makeEmpty();
-            gtString durationStr = acDurationAsString(pSessionData->m_profileDuration);
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %ls", CP_overviewPageProfileDuration, durationStr.asCharArray());
-            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
-
-            firstColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls: </b>", CP_overviewPageProfileCPUDetails);
-            unsigned int cpuFamily = pProfileInfo->m_cpuFamily;
-            unsigned int cpuModel = pProfileInfo->m_cpuModel;
-            unsigned int cpuCount = pProfileInfo->m_numCpus;
-            firstColStr.appendFormattedString(CP_overviewPageProfileCPUDetailsStr, cpuFamily, cpuModel, cpuCount);
-            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
-
-            firstColStr.makeEmpty();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %d", CP_overviewPageTotalProcesses, m_pProfileReader->getProcessMap()->size());
-            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
-
-            firstColStr.makeEmpty();
-            int threadsCount = m_pFunctionsTable->amountOfThreads();
-            firstColStr.appendFormattedString(L"<b>%ls:</b> %d", CP_overviewPageTotalThreads, threadsCount);
-            content.addHTMLItem(afHTMLContent::AP_HTML_LINE, firstColStr);
-
-            content.toString(htmlStr);
-            m_pPropertiewView->setHtml(acGTStringToQString(htmlStr));
+            //content.toString(htmlStr);
+            //m_pPropertiewView->setHtml(acGTStringToQString(htmlStr));
             retVal = true;
         }
     }
 
     return retVal;
+}
+
+bool SessionOverviewWindow::displaySessionProperties()
+{
+    afHTMLContent content;
+
+    bool bRetVal = displaySessionExecutionDetails(content);
+    if (true == bRetVal)
+    {
+        bRetVal = displaySessionProfileDetails(content);
+        if (true == bRetVal)
+        {
+            gtString htmlStr;
+            content.toString(htmlStr);
+            m_pPropertiewView->setHtml(acGTStringToQString(htmlStr));
+        }
+    }
+
+    return bRetVal;
 }
 
 bool SessionOverviewWindow::displaySummaryDataTables()
