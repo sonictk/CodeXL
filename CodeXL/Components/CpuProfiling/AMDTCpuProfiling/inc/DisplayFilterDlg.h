@@ -19,13 +19,18 @@
 // AMDTApplicationFramework:
 #include <AMDTApplicationFramework/Include/afMainAppWindow.h>
 #include <AMDTApplicationFramework/Include/views/afApplicationTreeItemData.h>
+#include <inc/SessionWindow.h>
 
+#include <memory>
 // Local:
 #include <inc/DisplayFilter.h>
+#include <AMDTCpuProfilingDataAccess/inc/AMDTCpuProfilingDataAccess.h>
 
 class CpuSessionWindow;
 class CpuProfileInfo;
 class CpuProfileReader;
+
+
 
 class DisplayFilterDlg : public QDialog
 {
@@ -39,7 +44,7 @@ public:
     QDialog::DialogCode displayDialog(const QString& sessionPath, bool enableOnlySystemDll);
 
     /// Return the edited session settings:
-    const SessionDisplaySettings& SessionSettings() const {return m_displaySettings;}
+    //const SessionDisplaySettings& SessionSettings() const {return m_displaySettings;}
 
     bool DisplaySystemDlls() const {return m_displaySystemDLLs;}
     bool ShowPercentage() const {return m_displayPercentageInColumn;}
@@ -57,6 +62,7 @@ private:
     void disableAllControlsExceptSystemDll(bool disable);
     void addFinalLayout();
     void updateHiddenColumnList();
+    bool createConfigCounterMap();
 
 private slots:
     void onClickAllCoreItem(int state);
@@ -71,14 +77,14 @@ private:
     static DisplayFilterDlg* m_psMySingleInstance;
 
     /// The edited settings:
-    SessionDisplaySettings m_displaySettings;
+    //SessionDisplaySettings m_displaySettings;
     bool m_displaySystemDLLs;
     bool m_displayPercentageInColumn;
 
     afApplicationTreeItemData* m_pSessionTreeItemData;
     CpuSessionWindow*   m_pCurrentSessionWindow;
-    CpuProfileReader*    m_pProfileReader;
-    CpuProfileInfo*      m_pProfileInfo;
+    //CpuProfileReader*    m_pProfileReader;
+    //CpuProfileInfo*      m_pProfileInfo;
 
     // Cores:
     QCheckBox* m_pCheckBoxCore;
@@ -127,7 +133,16 @@ private:
     QHBoxLayout* m_pButtonBox;
     bool m_enableOnlySystemDll;
 
+    std::shared_ptr<cxlProfileDataReader>   m_pProfDataReader;
+    gtVector<AMDTProfileReportConfig>       m_reportConfigs;
+    shared_ptr<AMDTProfileDataOptions>      m_options;
+    std::map<gtString, std::vector<counterDesc>> m_configCounterMap;
+    QString                                 m_cofigName;
+    gtVector<AMDTUInt32>                    m_selectedCounters;
+    std::map<int, int>                      m_colIdxCounterIdMap;
 };
+
+
 #endif//__DISPLAYFILTERDLG_H
 
 

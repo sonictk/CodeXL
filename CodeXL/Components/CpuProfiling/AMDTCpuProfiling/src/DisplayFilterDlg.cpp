@@ -25,6 +25,8 @@
 #include <inc/DisplayFilterDlg.h>
 #include <inc/SessionWindow.h>
 #include <inc/SessionViewCreator.h>
+#include <bitset> 
+#include <algorithm> 
 
 #define STR_CORE "Core"
 #define STR_All "All"
@@ -45,6 +47,8 @@
 const QString formHeading("Display Settings");
 const QString labelStyleSheet("QLabel { background-color: rgb(236, 236, 236); }");
 
+const unsigned int MAX_CORES_SUPPORTED = 64;
+
 DisplayFilterDlg* DisplayFilterDlg::m_psMySingleInstance = nullptr;
 
 DisplayFilterDlg& DisplayFilterDlg::instance()
@@ -62,8 +66,6 @@ DisplayFilterDlg& DisplayFilterDlg::instance()
 DisplayFilterDlg::DisplayFilterDlg(QWidget* pParent): QDialog(pParent),
     m_pSessionTreeItemData(nullptr),
     m_pCurrentSessionWindow(nullptr),
-    m_pProfileReader(nullptr),
-    m_pProfileInfo(nullptr),
     m_pCheckBoxCore(nullptr),
     m_pCheckBoxAllCore(nullptr),
     m_pLayoutForCoreList(nullptr),
@@ -98,7 +100,6 @@ DisplayFilterDlg::DisplayFilterDlg(QWidget* pParent): QDialog(pParent),
     m_pNUMALayout(nullptr),
     m_pButtonBox(nullptr)
 {
-
     initializeLayout();
 
     QObject::connect(m_pPushButtonOK, SIGNAL(clicked()), this, SLOT(onClickOk()));
@@ -120,6 +121,37 @@ DisplayFilterDlg::~DisplayFilterDlg()
     }
 }
 
+bool DisplayFilterDlg::createConfigCounterMap()
+{
+    bool ret = false;
+
+    m_configCounterMap.clear();
+
+    gtVector<AMDTProfileReportConfig> reportConfigs;
+    ret = m_pProfDataReader->GetReportConfigurations(reportConfigs);
+
+    if (true == ret)
+    {
+        for (const auto& config : reportConfigs)
+        {
+            std::vector<counterDesc> counters;
+            counters.clear();
+
+            for (const auto& counter : config.m_counterDescs)
+            {
+                counterDesc singleCounter;
+                singleCounter.m_id = counter.m_id;
+                singleCounter.m_name = counter.m_name;
+                singleCounter.m_isSet = true;
+                counters.push_back(singleCounter);
+            }
+
+            m_configCounterMap.insert(std::pair<gtString, std::vector<counterDesc>>(config.m_name, counters));
+        }
+    }
+
+    return ret;
+}
 
 QDialog::DialogCode DisplayFilterDlg::displayDialog(const QString& sessionPath, bool enableOnlySystemDll)
 {
@@ -137,23 +169,26 @@ QDialog::DialogCode DisplayFilterDlg::displayDialog(const QString& sessionPath, 
 
         GT_IF_WITH_ASSERT(m_pCurrentSessionWindow != nullptr)
         {
-            m_pProfileReader = &m_pCurrentSessionWindow->profileReader();
-            GT_IF_WITH_ASSERT(m_pProfileReader != nullptr)
-            {
-                m_pProfileInfo = m_pCurrentSessionWindow->profileReader().getProfileInfo();
-            }
+            // get database reader
+            m_pProfDataReader = m_pCurrentSessionWindow->profDbReader();
 
-            SessionDisplaySettings* pSessionDisplaySettings = m_pCurrentSessionWindow->sessionDisplaySettings();
+            //TODO: should be one time activity
+            createConfigCounterMap();
+
+            // get the configuration options
+            m_options = m_pCurrentSessionWindow->getProfileDataOptions();
+
+            // get number of cores
+            AMDTCpuTopologyVec topologyVec;
+            m_pProfDataReader->GetCpuTopology(topologyVec);
+            m_noOfCores = topologyVec.size();
+
             m_pSessionTreeItemData = (afApplicationTreeItemData*)m_pCurrentSessionWindow->displayedItemData();
-            GT_IF_WITH_ASSERT((nullptr != m_pProfileReader) && (nullptr != m_pProfileInfo) && (nullptr != m_pSessionTreeItemData) && (pSessionDisplaySettings != nullptr))
+            GT_IF_WITH_ASSERT((nullptr != m_pSessionTreeItemData) && 
+                              (nullptr != m_pSessionTreeItemData))
             {
-                // Copy the settings to the display settings member:
-                CPUGlobalDisplayFilter& globalFilter = CPUGlobalDisplayFilter::instance();
-                m_displaySettings.CopyFrom(*pSessionDisplaySettings);
-                m_displaySystemDLLs = globalFilter.m_displaySystemDLLs;
-                m_displayPercentageInColumn = globalFilter.m_displayPercentageInColumn;
-
-                if (m_displaySettings.m_separateBy == SEPARATE_BY_NONE)
+                if ((false == m_options->m_isSeperateByNuma) || 
+                    (false == m_options->m_isSeperateByCore))
                 {
                     m_pCheckBoxSeparateColumnsBy->setChecked(false);
                     m_pRadioButtonSeparateByNUMA->setEnabled(false);
@@ -169,11 +204,11 @@ QDialog::DialogCode DisplayFilterDlg::displayDialog(const QString& sessionPath, 
                     m_pRadioButtonSeparateByCore->setChecked(true);
 #endif
 
-                    if (m_displaySettings.m_separateBy == SEPARATE_BY_NUMA)
+                    if (true == m_options->m_isSeperateByNuma)
                     {
                         m_pRadioButtonSeparateByNUMA->setChecked(true);
                     }
-                    else if (m_displaySettings.m_separateBy == SEPARATE_BY_CORE)
+                    else if (false == m_options->m_isSeperateByCore)
                     {
                         m_pRadioButtonSeparateByCore->setChecked(true);
                     }
@@ -198,14 +233,7 @@ QDialog::DialogCode DisplayFilterDlg::displayDialog(const QString& sessionPath, 
     }
 
     m_pCheckBoxDisplaySystemDLLs->setEnabled(true);
-    disableAllControlsExceptSystemDll(m_enableOnlySystemDll);
-
-    // Disable show percentage checkbox when CLU profiled
-    if (m_displaySettings.m_pProfileInfo->m_isProfilingCLU)
-    {
-        m_pCheckBoxShowPercentageBars->setChecked(false);
-        m_pCheckBoxShowPercentageBars->setEnabled(false);
-    }
+    //disableAllControlsExceptSystemDll(m_enableOnlySystemDll);
 
     // Display the dialog:
     int rc = exec();
@@ -287,9 +315,9 @@ bool DisplayFilterDlg::initializeConfiguration()
 {
     bool retVal = true;
 
-    if (m_pProfileInfo->m_numCpus > 0)
+    if (m_noOfCores > 0)
     {
-        retVal = populateCoreList(m_pProfileInfo->m_numCpus);
+        retVal = populateCoreList(m_noOfCores);
     }
 
     retVal = retVal && populateColumnList();
@@ -303,8 +331,6 @@ bool DisplayFilterDlg::populateCoreList(int noOfCores)
 
     if (nullptr == m_pWidgetCoreList || m_noOfCores != noOfCores)
     {
-        m_noOfCores = noOfCores;
-
         m_pWidgetCoreList = new QWidget(m_pScrollAreaCPUCore);
         RETURN_FALSE_IF_NULL(m_pWidgetCoreList);
         m_pScrollAreaCPUCore->setWidgetResizable(true);
@@ -351,11 +377,25 @@ bool DisplayFilterDlg::populateCoreList(int noOfCores)
         m_pScrollAreaCPUCore->setWidget(m_pWidgetCoreList);
     }
 
+#if 0
     for (int i = 0; i < m_noOfCores; ++i)
     {
         m_pCheckBoxCore[i].setChecked(true);
     }
+#endif
 
+    unsigned long val = m_options->m_coreMask;
+    std::bitset<MAX_CORES_SUPPORTED> mask(val);
+
+    for (int idx = 0; idx < m_noOfCores; ++idx)
+    {
+        if (true == mask.test(idx))
+        {
+            m_pCheckBoxCore[idx].setChecked(true);
+        }
+    }
+
+#if 0
     CoreFilter::Iterator it;
     CoreFilter::Iterator itStart = m_displaySettings.m_cpuFilter.begin();
     CoreFilter::Iterator itEnd = m_displaySettings.m_cpuFilter.end();
@@ -364,6 +404,7 @@ bool DisplayFilterDlg::populateCoreList(int noOfCores)
     {
         m_pCheckBoxCore[(*it)].setChecked(false);
     }
+#endif
 
     return retVal;
 }
@@ -375,16 +416,13 @@ bool DisplayFilterDlg::populateColumnList()
     QObject::disconnect(m_pComboBoxViewes, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(onChangeView(const QString&)));
     m_pComboBoxViewes->clear();
 
-
-    QStringList availableViews = m_displaySettings.getListOfViews(m_pProfileInfo->m_eventVec.size());
-
-    for (int i = 0; i < availableViews.size(); ++i)
+    for (auto config : m_configCounterMap)
     {
-        m_pComboBoxViewes->addItem(availableViews.at(i));
+        QString str(config.first.asASCIICharArray());
+        m_pComboBoxViewes->addItem(str);
     }
 
-    QString viewName = m_displaySettings.m_displayFilterName;
-    int index = m_pComboBoxViewes->findText(viewName);
+    int index = m_pComboBoxViewes->findText(m_cofigName);
 
     if (index != -1)  // -1 for not found
     {
@@ -402,64 +440,99 @@ void DisplayFilterDlg::onChangeView(const QString& newlySelectedView)
     (void)(newlySelectedView); // unused
 
     QString viewName = m_pComboBoxViewes->currentText();
-    m_displaySettings.m_displayFilterName = viewName;
-    m_displaySettings.calculateDisplayedColumns(m_pProfileReader->getTopologyMap());
+    m_cofigName = viewName;
+    
+    std::wstring wstr = viewName.toStdWString();
+    const wchar_t *cfgName = wstr.c_str();
 
-    const int noOfColumn = m_displaySettings.m_availableDataColumnCaptions.size();
-    m_noOfColumn = noOfColumn;
+    gtString str(cfgName);
+    auto configNameSet = m_configCounterMap.find(str);
 
-    if (noOfColumn != 0)
+    if (m_configCounterMap.end() != configNameSet)
     {
-        // Remove old items:
-        if (nullptr != m_pVBLayoutForColumn)
-        {
-            const int noOfColumnOld = m_pVBLayoutForColumn->count();
+        m_noOfColumn = configNameSet->second.size();
+        GT_ASSERT(m_noOfColumn);
 
-            for (int i = 0 ; i < noOfColumnOld ; ++i)
+        const int noOfColumn = m_noOfColumn;
+
+        if (noOfColumn != 0)
+        {
+            // Remove old items:
+            if (nullptr != m_pVBLayoutForColumn)
             {
-                m_pVBLayoutForColumn->removeWidget(m_pCheckBoxColumns + i);
+                const int noOfColumnOld = m_pVBLayoutForColumn->count();
+
+                for (int i = 0; i < noOfColumnOld; ++i)
+                {
+                    m_pVBLayoutForColumn->removeWidget(m_pCheckBoxColumns + i);
+                }
+
+                delete[] m_pCheckBoxColumns;
+                delete m_pVBLayoutForColumn;
             }
 
-            delete [] m_pCheckBoxColumns;
-            delete m_pVBLayoutForColumn;
-        }
+            m_pVBLayoutForColumn = new QVBoxLayout(m_pScrollAreaColumns);
+            m_pWidgetColumnList = new QWidget(m_pScrollAreaColumns);
+            RETURN_IF_NULL(m_pVBLayoutForColumn);
+            m_pScrollAreaColumns->setFixedHeight(acScalePixelSizeToDisplayDPI(CP_DISPLAY_SETTINGS_COLUMN_AREA_HEIGHT));
+            m_pVBLayoutForColumn->setMargin(0);
 
-        m_pVBLayoutForColumn = new QVBoxLayout(m_pScrollAreaColumns);
-        m_pWidgetColumnList = new QWidget(m_pScrollAreaColumns);
-        RETURN_IF_NULL(m_pVBLayoutForColumn);
-        m_pScrollAreaColumns->setFixedHeight(acScalePixelSizeToDisplayDPI(CP_DISPLAY_SETTINGS_COLUMN_AREA_HEIGHT));
-        m_pVBLayoutForColumn->setMargin(0);
-
-        // Add new items:
-        m_pCheckBoxColumns = new QCheckBox[noOfColumn];
-
-        for (int i = 0 ; i < noOfColumn ; ++i)
-        {
-            m_pCheckBoxColumns[i].setText(m_displaySettings.m_availableDataColumnCaptions.at(i));
-            m_pVBLayoutForColumn->addWidget(m_pCheckBoxColumns + i);
-            m_pCheckBoxColumns[i].setChecked(false);
-        }
-
-        m_pVBLayoutForColumn->addStretch();
-
-        // Add enable and disable state:
-        int noOfColumnDisplayed = (int)m_displaySettings.m_displayedDataColumnsIndices.size();
-
-        for (int i = 0 ; i < noOfColumnDisplayed ; ++i)
-        {
-            int displayedIndex = m_displaySettings.m_displayedDataColumnsIndices.at(i);
-
-            if ((0 <= displayedIndex) && (displayedIndex < noOfColumn))
+            // Add new items:
+            m_pCheckBoxColumns = new QCheckBox[noOfColumn];
+            
+            unsigned int idx = 0;
+            for (const auto & counter : configNameSet->second)
             {
-                int checkBoxIndex = displayedIndex;
-                bool shouldFilter = m_displaySettings.m_filteredDataColumnsCaptions.contains(m_pCheckBoxColumns[checkBoxIndex].text());
-                m_pCheckBoxColumns[checkBoxIndex].setChecked(!shouldFilter);
+                m_pCheckBoxColumns[idx].setText(counter.m_name.asASCIICharArray());
+                m_pVBLayoutForColumn->addWidget(m_pCheckBoxColumns + idx);
+                m_pCheckBoxColumns[idx++].setChecked(true);
             }
-        }
 
-        m_pWidgetColumnList->setLayout(m_pVBLayoutForColumn);
-        m_pScrollAreaColumns->setWidget(m_pWidgetColumnList);
+            m_pVBLayoutForColumn->addStretch();
+            
+            //find index for selected config.
+            std::wstring wstr = m_cofigName.toStdWString();
+            gtString configName(wstr.c_str());
+
+            idx = 0;
+            auto itr = m_configCounterMap.find(configName);
+
+            if (m_configCounterMap.end() != itr)
+            {
+                for (const auto& irc : itr->second)
+                {
+                    for (const auto& counter : m_options->m_counters)
+                    {
+                        if (counter == irc.m_id)
+                        {
+                            m_pCheckBoxColumns[idx].setChecked(true);
+                        }
+                    }
+                    idx++;
+                }
+            }
+#if 0
+            // Add enable and disable state:
+            int noOfColumnDisplayed = (int)m_displaySettings.m_displayedDataColumnsIndices.size();
+
+            for (int i = 0; i < noOfColumnDisplayed; ++i)
+            {
+                int displayedIndex = m_displaySettings.m_displayedDataColumnsIndices.at(i);
+
+                if ((0 <= displayedIndex) && (displayedIndex < noOfColumn))
+                {
+                    int checkBoxIndex = displayedIndex;
+                    bool shouldFilter = m_displaySettings.m_filteredDataColumnsCaptions.contains(m_pCheckBoxColumns[checkBoxIndex].text());
+                    m_pCheckBoxColumns[checkBoxIndex].setChecked(!shouldFilter);
+                }
+            }
+#endif
+            m_pWidgetColumnList->setLayout(m_pVBLayoutForColumn);
+            m_pScrollAreaColumns->setWidget(m_pWidgetColumnList);
+        }
     }
+
+
 }
 
 void DisplayFilterDlg::onClickAllCoreItem(int state)
@@ -492,41 +565,46 @@ void DisplayFilterDlg::onClickCoreItem(int state)
     QObject::connect(m_pCheckBoxAllCore, SIGNAL(stateChanged(int)), this, SLOT(onClickAllCoreItem(int)));
 }
 
+
 void DisplayFilterDlg::onClickOk()
 {
     // Update data:
-    GT_IF_WITH_ASSERT((nullptr != m_pProfileReader) && (nullptr != m_pProfileInfo) && (nullptr != m_pSessionTreeItemData))
+    GT_IF_WITH_ASSERT((nullptr != m_pProfDataReader.get()) && 
+                      (nullptr != m_pSessionTreeItemData))
     {
         // col
-        bool atLeastOneCore = true;
+        bool atLeastOneCore = false;
 
         // CPU:
         CoreFilter tmpCpuFilter;
 
+        std::bitset<MAX_CORES_SUPPORTED> coreMask;
         for (int i = 0 ; i < m_noOfCores ; ++i)
         {
-            if (! m_pCheckBoxCore[i].isChecked())
+            if (m_pCheckBoxCore[i].isChecked())
             {
-                tmpCpuFilter.append(i);
+                coreMask.set(i, true);
+                atLeastOneCore = true;
             }
         }
 
-        if ((0 < m_noOfCores) && (tmpCpuFilter.size() == m_noOfCores))
-        {
+        m_options->m_coreMask = coreMask.to_ulong();
 
+        if ((0 < m_noOfCores) && ((static_cast<int>(coreMask.count())) == m_noOfCores))
+        {
             m_pCheckBoxCore[0].setChecked(true);
-            tmpCpuFilter.clear();
-            atLeastOneCore = false;
+            coreMask.reset();
         }
 
         // Update the hidden column list:
         bool atLeastOneColumn = true;
         updateHiddenColumnList();
 
-        if ((0 < m_noOfColumn) && (m_displaySettings.m_filteredDataColumnsCaptions.size() == m_noOfColumn))
+        if ((0 < m_noOfColumn) && 
+            (static_cast<int>(m_selectedCounters.size()) == m_noOfColumn))
         {
             m_pCheckBoxColumns[0].setChecked(true);
-            m_displaySettings.m_filteredDataColumnsCaptions.clear();
+            m_selectedCounters.clear();
             atLeastOneColumn = false;
         }
 
@@ -553,37 +631,36 @@ void DisplayFilterDlg::onClickOk()
             return;
         }
 
-        m_displaySettings.m_cpuFilter = tmpCpuFilter;
-
-
         if (m_pCheckBoxSeparateColumnsBy->isChecked())
         {
 
             if (m_pRadioButtonSeparateByCore->isChecked())
             {
-                m_displaySettings.m_separateBy = SEPARATE_BY_CORE;
+                m_options->m_isSeperateByCore = true;
             }
 
 #if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
             else if (m_pRadioButtonSeparateByNUMA->isChecked())
             {
-                m_displaySettings.m_separateBy = SEPARATE_BY_NUMA;
+                m_options->m_isSeperateByNuma = true;
             }
 
 #endif
         }
-        else
-        {
-            m_displaySettings.m_separateBy = SEPARATE_BY_NONE;
-        }
+
 
         m_displayPercentageInColumn = m_pCheckBoxShowPercentageBars->isChecked();
         m_displaySystemDLLs = m_pCheckBoxDisplaySystemDLLs->isChecked();
 
+/*
         // Get the display filter configuration:
         m_displaySettings.m_displayFilterName = m_pComboBoxViewes->currentText();
         m_displaySettings.calculateDisplayedColumns(m_pProfileReader->getTopologyMap());
+*/
     }
+
+    // set the report options
+    m_pProfDataReader->SetReportOption(*m_options.get());
 
     accept();
 }
@@ -610,8 +687,12 @@ void DisplayFilterDlg::onClickCheckBoxSeparateColumnsBy(int state)
 
 void DisplayFilterDlg::disableAllControlsExceptSystemDll(bool disable)
 {
-    GT_IF_WITH_ASSERT((m_pCheckBoxCore != nullptr) && (m_pCheckBoxAllCore != nullptr) && (m_pComboBoxViewes != nullptr) &&
-                      (m_pCheckBoxShowPercentageBars != nullptr) && (m_pRadioButtonSeparateByCore != nullptr) && (m_pRadioButtonSeparateByNUMA != nullptr))
+    GT_IF_WITH_ASSERT((m_pCheckBoxCore != nullptr) && 
+                      (m_pCheckBoxAllCore != nullptr) && 
+                      (m_pComboBoxViewes != nullptr) &&
+                      (m_pCheckBoxShowPercentageBars != nullptr) && 
+                      (m_pRadioButtonSeparateByCore != nullptr) && 
+                      (m_pRadioButtonSeparateByNUMA != nullptr))
     {
         m_pCheckBoxCore->setEnabled(!disable);
         m_pCheckBoxAllCore->setEnabled(!disable);
@@ -637,7 +718,7 @@ void DisplayFilterDlg::disableAllControlsExceptSystemDll(bool disable)
             m_pRadioButtonSeparateByNUMA->setEnabled(!disable);
 #endif
         }
-
+#if 0
         // Notice: Sigal 10/9/2013: We have a bug, we cannot support separate by
         // option in overview window. Therefore, we want to enable the user to change this option
         // whenever it is set.
@@ -645,6 +726,8 @@ void DisplayFilterDlg::disableAllControlsExceptSystemDll(bool disable)
         {
             m_pCheckBoxSeparateColumnsBy->setEnabled(true);
         }
+#endif
+
     }
 }
 
@@ -746,18 +829,28 @@ void DisplayFilterDlg::addFinalLayout()
 void DisplayFilterDlg::updateHiddenColumnList()
 {
     // Sanity check:
-    GT_IF_WITH_ASSERT((m_pCheckBoxSeparateColumnsBy != nullptr) && (m_pRadioButtonSeparateByNUMA != nullptr) && (m_pRadioButtonSeparateByCore != nullptr))
+    GT_IF_WITH_ASSERT((m_pCheckBoxSeparateColumnsBy != nullptr) && 
+                      (m_pRadioButtonSeparateByNUMA != nullptr) && 
+                      (m_pRadioButtonSeparateByCore != nullptr))
     {
-        // Clear the list of displayed column indices:
-        m_displaySettings.m_filteredDataColumnsCaptions.clear();
+        std::wstring wstr = m_cofigName.toStdWString();
+        gtString configName(wstr.c_str());
 
-        for (int i = 0 ; i < m_noOfColumn ; ++i)
+        auto itr = m_configCounterMap.find(configName);
+        if (m_configCounterMap.end() != itr)
         {
-            bool isChecked = m_pCheckBoxColumns[i].isChecked();
-
-            if (!isChecked)
+            for (int i = 0; i < m_noOfColumn; ++i)
             {
-                m_displaySettings.m_filteredDataColumnsCaptions.push_back(m_pCheckBoxColumns[i].text());
+                bool isChecked = m_pCheckBoxColumns[i].isChecked();
+                if (isChecked)
+                {
+                    m_options->m_counters.push_back(itr->second.at(i).m_id);
+                    itr->second.at(i).m_isSet = true;
+                }
+                else
+                {
+                    itr->second.at(i).m_isSet = false;
+                }
             }
         }
     }

@@ -40,15 +40,22 @@
 #undef Bool
 
 // Pre-declarations
-class SystemDataTab;
-class SessionOverviewWindow;
-class CssTab;
-class afApplicationTreeItemData;
-class SessionModulesView;
-class SessionFunctionView;
-class SessionTreeNodeData;
 class CPUSessionTreeItemData;
+class CssTab;
 class SessionCallGraphView;
+class SessionFunctionView;
+class SessionModulesView;
+class SessionOverviewWindow;
+class SessionTreeNodeData;
+class SystemDataTab;
+class afApplicationTreeItemData;
+
+struct counterDesc
+{
+    gtString          m_name;
+    AMDTUInt32        m_id;
+    bool              m_isSet;
+};
 
 class CpuSessionWindow : public SharedSessionWindow
 {
@@ -85,6 +92,7 @@ public:
     /// Expose information:
     CpuProfileReader& profileReader() { return m_profileReader; }
     shared_ptr<cxlProfileDataReader>& profDbReader() { return m_pCpuProfDataRd; }
+    shared_ptr<AMDTProfileDataOptions> getProfileDataOptions() { return m_pOptions; }
 
     bool displaySessionSource();
     SessionDisplaySettings* sessionDisplaySettings() {return &m_sessionDisplayFilter;};
@@ -182,6 +190,7 @@ private:
     /// Contain the list of file paths for the processes with CSS collection:
     QMap<ProcessIdType, QString> m_CSSCollectedProcessesFilePathsMap;
 
+    shared_ptr<AMDTProfileDataOptions>  m_pOptions;
 };
 
 #endif //_CACpuSessionWindow_H
