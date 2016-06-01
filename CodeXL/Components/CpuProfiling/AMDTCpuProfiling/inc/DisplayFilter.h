@@ -13,6 +13,7 @@
 #include <QVector>
 #include <QStringList>
 #include <QMultiMap>
+#include <QComboBox> 
 
 // Infra:
 #include <AMDTBaseTools/Include/gtMap.h>
@@ -240,6 +241,95 @@ public:
     Qt::SortOrder m_lastSortOrder;
 
     QString m_lastSortColumnCaption;
+};
+
+// STANDARD INCLUDES
+#include <memory>
+#include <map>
+#include <vector>
+#include <utility>
+
+//PROJECT INCLUDES
+#include <AMDTBaseTools/Include/AMDTDefinitions.h>
+#include <AMDTCpuProfilingDataAccess/inc/AMDTCpuProfilingDataAccess.h>
+
+// FORWARD DECLARATION
+class cxlProfileDataReader;
+
+// TYPEDEFS
+//using CounterNameIdVec = std::vector<std::pair<gtString, AMDTUInt32>>;
+using CounterNameIdVec      = std::vector<gtString> ;
+using cofigNameCounterMap   = std::map<gtString, CounterNameIdVec>;
+using cofigNameCounterPair  = std::pair<gtString, CounterNameIdVec>;
+using CounterNameIdMap      = std::map<gtString, AMDTUInt64>;
+using CounterIdNameMap      = std::map<AMDTUInt64, gtString>;
+
+class DisplayFilter
+{
+public:
+    // in: Configuration name
+    // out: Vector of configuration name and id
+    bool GetConfigCounters(const QString& configName, CounterNameIdVec& counterDetails);
+
+    bool SetProfileDataOptions(AMDTProfileDataOptions opts);
+    const AMDTProfileDataOptions& GetProfileDataOptions() const;
+
+    bool SetReportConfig();
+    const gtVector<AMDTProfileReportConfig>& GetReportConfig() const;
+
+    bool SetCounterPerColCheckBox(QString checkBoxName);
+
+    const QString& GetCurrentCofigName() const { return m_configurationName; }
+
+    static DisplayFilter* GetInstance();
+    
+    void SetProfDataReader(shared_ptr<cxlProfileDataReader> reader) { m_pProfDataReader = reader; }
+
+    bool CreateConfigCounterMap();
+
+    // ACCESS FUNCTIONS
+    bool IsSeperatedByNumaEnabled() const { return m_options.m_isSeperateByNuma; }
+    bool IsSeperatedByCoreEnabled() const { return m_options.m_isSeperateByCore; }
+
+    //SET
+    void SetSeperatedbyNuma(bool isSet) { m_options.m_isSeperateByNuma = isSet; }
+    void SetSeperatedbyCore(bool isSet) { m_options.m_isSeperateByCore = isSet; }
+
+    //Set counter description
+    bool SetCounterDescription(const gtVector<AMDTUInt32>& counterDesp) { m_options.m_counters = counterDesp; }
+    const gtVector<AMDTUInt32> GetCounterDescription() const { return m_options.m_counters; }
+
+    //CoreMask
+    void SetCoreMask(AMDTUInt64 mask) { m_options.m_coreMask = mask; }
+    AMDTUInt64 GetCoreMask() const { return m_options.m_coreMask; }
+    bool InitToDefault();
+
+   int GetCpuCoreCnt() const;
+   const void GetConfigName(std::vector<gtString>& configNameList) const { configNameList = m_configNameList; }
+
+   // get couterid for counter name
+   AMDTUInt64 GetCounterId(const QString& counterName)const;
+   gtString GetCounterName(AMDTUInt64 counterId) const;
+
+   // selected counterList
+   void SetSelectedCounterList(const std::vector<gtString>& list) { m_selectedCountersIdList.clear();  m_selectedCountersIdList = list; }
+   void GetSelectedCounterList(std::vector<gtString>& list) { list = m_selectedCountersIdList;}
+
+private:
+    
+    static DisplayFilter* m_instance;
+
+    DisplayFilter();
+
+    std::shared_ptr<cxlProfileDataReader>   m_pProfDataReader;
+    gtVector<AMDTProfileReportConfig>       m_reportConfigs;
+    AMDTProfileDataOptions                  m_options;
+    cofigNameCounterMap                     m_configCounterMap;
+    QString                                 m_configurationName;
+    std::vector<gtString>                   m_configNameList;
+    CounterNameIdMap                        m_counterNameIdMap;
+    CounterIdNameMap                        m_counterIdNameMap;
+    std::vector<gtString>                 m_selectedCountersIdList;
 };
 
 #endif //__DISPLAYFILTER_H

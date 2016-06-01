@@ -52,8 +52,8 @@
 #include <inc/SessionCallGraphView.h>
 
 CpuSessionWindow::CpuSessionWindow(const afApplicationTreeItemData* pSessionTreeItemData, QWidget* pParent) 
-                 : SharedSessionWindow(pParent),
-                   m_pOptions(new AMDTProfileDataOptions)
+                 : SharedSessionWindow(pParent)
+                   //m_pOptions(new AMDTProfileDataOptions)
 {
     QSizePolicy spolicy;
     spolicy.setVerticalPolicy(QSizePolicy::Ignored);
@@ -86,12 +86,12 @@ CpuSessionWindow::CpuSessionWindow(const afApplicationTreeItemData* pSessionTree
     rc = connect(ProfileApplicationTreeHandler::instance(), SIGNAL(BeforeSessionRename(SessionTreeNodeData*, bool&, QString&)), this, SLOT(onBeforeSessionRename(SessionTreeNodeData*, bool&, QString&)));
     GT_ASSERT(rc);
 
-    // initialise
-    m_pOptions->m_coreMask = AMDT_PROFILE_ALL_CORES;
-    m_pOptions->m_doSort = true;
-    m_pOptions->m_summaryCount = 5;
-    m_pOptions->m_isSeperateByCore = false;
-    m_pOptions->m_isSeperateByNuma = false;
+    //// initialise
+    //m_pOptions->m_coreMask = AMDT_PROFILE_ALL_CORES;
+    //m_pOptions->m_doSort = true;
+    //m_pOptions->m_summaryCount = 5;
+    //m_pOptions->m_isSeperateByCore = false;
+    //m_pOptions->m_isSeperateByNuma = false;
 
 }
 
@@ -201,6 +201,17 @@ bool CpuSessionWindow::display()
     GT_IF_WITH_ASSERT((nullptr != m_pTabWidget) && (nullptr != m_pSessionTreeItemData))
     {
         openDataReader();
+
+        DisplayFilter *filter =  DisplayFilter::GetInstance();
+        filter->SetProfDataReader(m_pCpuProfDataRd);
+        retVal = filter->CreateConfigCounterMap();
+        if (retVal == true)
+        {
+            // init with default configuration
+            retVal = filter->InitToDefault();
+        }
+        
+
 
         m_sessionFile = m_pSessionTreeItemData->m_filePath;
 

@@ -84,7 +84,8 @@ bool SessionFunctionView::display(afApplicationTreeItemData* pItemData)
 
 void SessionFunctionView::setSessionWindowLayout()
 {
-    // Create bottom and top widgets (top for the tables, bottom for the properties and hint window):
+    // Create bottom and top widgets (top for the tables, 
+    // bottom for the properties and hint window):
     QWidget* pCentralWidget = new QWidget;
 
     pCentralWidget->setMouseTracking(true);

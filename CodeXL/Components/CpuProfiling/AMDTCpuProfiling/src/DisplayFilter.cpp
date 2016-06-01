@@ -969,7 +969,6 @@ CPUGlobalDisplayFilter& CPUGlobalDisplayFilter::instance()
     {
         // Create it:
         m_psMySingleInstance = new CPUGlobalDisplayFilter;
-
     }
 
     return *m_psMySingleInstance;
@@ -995,3 +994,201 @@ CPUGlobalDisplayFilter::CPUGlobalDisplayFilter()
     m_displayPercentageInColumn = false;
 }
 
+
+DisplayFilter::DisplayFilter()
+{
+
+}
+
+bool DisplayFilter::CreateConfigCounterMap()
+{
+    bool ret = false;
+
+    m_reportConfigs.clear();
+
+    if (nullptr != m_pProfDataReader.get())
+    {
+        ret = m_pProfDataReader->GetReportConfigurations(m_reportConfigs);
+        if (true == ret)
+        {
+            m_configCounterMap.clear();
+            for (const auto& config : m_reportConfigs)
+            {
+                CounterNameIdVec counters;
+                counters.clear();
+
+                for (const auto& counter : config.m_counterDescs)
+                {
+                    counters.push_back(counter.m_name);
+                    m_counterNameIdMap.emplace(counter.m_name, counter.m_id);
+                    m_counterIdNameMap.emplace(counter.m_id, counter.m_name);
+                }
+
+                m_configCounterMap.insert(cofigNameCounterPair(config.m_name, counters));
+                m_configNameList.push_back(config.m_name);
+            }
+        }
+    }
+
+    return ret;
+}
+
+bool DisplayFilter::
+GetConfigCounters(const QString& configName, CounterNameIdVec& counterDetails)
+{
+    bool ret = false;
+
+    // set the member variable 
+    m_configurationName = configName;
+
+    // get wstring
+    std::wstring wstr = configName.toStdWString();
+    const wchar_t *cfgName = wstr.c_str();
+
+    gtString str(cfgName);
+    auto itr = m_configCounterMap.find(cfgName);
+    if (m_configCounterMap.end() != itr)
+    {
+        counterDetails = itr->second;
+        ret = true;
+    }
+
+    return ret;
+}
+
+bool DisplayFilter::
+SetProfileDataOptions(AMDTProfileDataOptions opts)
+{
+    m_options.m_coreMask                = opts.m_coreMask;
+    m_options.m_doSort                  = opts.m_doSort;
+    m_options.m_ignoreSystemModules     = opts.m_ignoreSystemModules;
+    m_options.m_isSeperateByCore        = opts.m_isSeperateByCore;
+    m_options.m_isSeperateByNuma        = opts.m_isSeperateByNuma;
+    m_options.m_othersEntryInSummary    = opts.m_othersEntryInSummary;
+    m_options.m_summaryCount            = opts.m_summaryCount;
+    m_options.m_counters                = opts.m_counters;
+
+    return true;
+}
+
+const AMDTProfileDataOptions& 
+DisplayFilter::GetProfileDataOptions() const
+{
+    return m_options;
+}
+
+bool DisplayFilter::
+SetReportConfig()
+{
+    bool ret = false;
+
+    if (nullptr != m_pProfDataReader.get())
+    {
+        m_pProfDataReader->SetReportOption(m_options);
+        ret = true;
+    }
+
+    return ret;
+}
+
+const  gtVector<AMDTProfileReportConfig>&
+DisplayFilter::GetReportConfig() const
+{
+    return m_reportConfigs;
+}
+
+bool  DisplayFilter::
+SetCounterPerColCheckBox(QString checkBoxName)
+{
+    (void)checkBoxName;
+    return true;
+}
+
+
+DisplayFilter* DisplayFilter::m_instance = nullptr;
+
+DisplayFilter*
+DisplayFilter::GetInstance()
+{
+    if (nullptr == m_instance)
+    {
+        m_instance = new DisplayFilter();
+
+    }
+
+    return m_instance;
+
+}
+
+bool
+DisplayFilter::InitToDefault()
+{
+    bool retVal = true;
+    m_reportConfigs.clear();
+
+    if (nullptr != m_pProfDataReader.get())
+    {
+        retVal = m_pProfDataReader->GetReportConfigurations(m_reportConfigs);
+        m_options.m_coreMask = AMDT_PROFILE_ALL_CORES;
+        m_options.m_doSort = true;
+        m_options.m_summaryCount = 5;
+        m_options.m_isSeperateByCore = false;
+        m_options.m_isSeperateByNuma = false;
+
+        //setting all counters for config "All Data"
+        for (auto const& counter : m_reportConfigs[0].m_counterDescs)
+        {
+            m_options.m_counters.push_back(counter.m_id);
+            m_selectedCountersIdList.push_back(counter.m_name);
+        }
+
+        retVal = m_pProfDataReader->SetReportOption(m_options);
+    }
+
+    return retVal;
+}
+
+int DisplayFilter::GetCpuCoreCnt() const
+{
+    int coresCnt = 0;
+
+    if (nullptr != m_pProfDataReader.get())
+    {
+        AMDTCpuTopologyVec topologyVec;
+        m_pProfDataReader->GetCpuTopology(topologyVec);
+        coresCnt = topologyVec.size();
+    }
+
+    return coresCnt;
+}
+
+AMDTUInt64 DisplayFilter::GetCounterId(const QString & counterName) const
+{
+    AMDTUInt64 id = 0;
+    // get wstring
+    std::wstring wStr = counterName.toStdWString();
+    const wchar_t *cfgName = wStr.c_str();
+
+    gtString gStr(cfgName);
+
+    auto idItr = m_counterNameIdMap.find(cfgName);
+    if (m_counterNameIdMap.end() != idItr)
+    {
+        id = idItr->second;
+    }
+
+    return id;
+}
+
+gtString DisplayFilter::GetCounterName(AMDTUInt64 counterId) const
+{
+    gtString counterName;
+
+    auto nameItr = m_counterIdNameMap.find(counterId);
+    if (m_counterIdNameMap.end() != nameItr)
+    {
+        counterName = nameItr->second;
+    }
+
+    return counterName;
+}

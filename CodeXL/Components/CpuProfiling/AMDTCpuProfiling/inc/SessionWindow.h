@@ -92,7 +92,7 @@ public:
     /// Expose information:
     CpuProfileReader& profileReader() { return m_profileReader; }
     shared_ptr<cxlProfileDataReader>& profDbReader() { return m_pCpuProfDataRd; }
-    shared_ptr<AMDTProfileDataOptions> getProfileDataOptions() { return m_pOptions; }
+    //shared_ptr<AMDTProfileDataOptions> getProfileDataOptions() { return m_pOptions; }
 
     bool displaySessionSource();
     SessionDisplaySettings* sessionDisplaySettings() {return &m_sessionDisplayFilter;};
@@ -190,7 +190,7 @@ private:
     /// Contain the list of file paths for the processes with CSS collection:
     QMap<ProcessIdType, QString> m_CSSCollectedProcessesFilePathsMap;
 
-    shared_ptr<AMDTProfileDataOptions>  m_pOptions;
+    //shared_ptr<AMDTProfileDataOptions>  m_pOptions;
 };
 
 #endif //_CACpuSessionWindow_H
