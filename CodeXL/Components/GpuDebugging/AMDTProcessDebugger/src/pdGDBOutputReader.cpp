@@ -40,6 +40,7 @@
 #include <AMDTAPIClasses/Include/Events/apOutputDebugStringEvent.h>
 #include <AMDTAPIClasses/Include/Events/apDebuggedProcessTerminatedEvent.h>
 #include <AMDTAPIClasses/Include/Events/apThreadCreatedEvent.h>
+#include <AMDTApiFunctions/Include/gaGRApiFunctions.h>
 
 
 // Local:
@@ -2968,6 +2969,16 @@ bool pdGDBOutputReader::handleAsynchronousOutput(const gtASCIIString& gdbOutputL
         gtASCIIString stopReason;
         bool rc1 = getStopReasonString(gdbOutputLine, stopReason);
         bool wasHostBreakPoint = false;
+
+        if (!rc1)
+        {
+            /// Gdb not always put stop reason of the "*stopped" message for steps
+            if (gdbOutputLine.find("frame=") != -1)
+            {
+                flushGDBPrompt();
+                rc1 = true;
+            }
+        }
 
         if (rc1)
         {

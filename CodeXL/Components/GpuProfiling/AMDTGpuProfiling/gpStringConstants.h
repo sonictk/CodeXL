@@ -254,6 +254,9 @@
 #define GPU_STR_TraceViewGPUEarlierFull "GPU PROCESSING EARLIER FRAME/S"
 #define GPU_STR_TraceViewGPUEarlierShort "EARLIER FRAME/S"
 
+// WholeCmdBuf
+#define GPU_STR_TraceViewWholeBufferTraceStr "Vulkan_WholeCmdBuf"
+
 // Trace table captions
 #define GP_STR_TraceTableColumnIndex "Index"
 #define GP_STR_TraceTableColumnInterface "Interface"
@@ -417,7 +420,7 @@
 // Dashboard
 #define GPU_STR_dashboard_FrameAnalysisCaption "Frame Analysis"
 #define GPU_STR_dashboard_CapturedFramesCaption "Captured Frames"
-#define GPU_STR_dashboard_CaptureTooltip "Click to capture and analyze a frame"
+#define GPU_STR_dashboard_CaptureTooltip "Capture %1 frames for analysis"
 #define GPU_STR_dashboard_StopTooltip "Stop the analyzed application and review any captured frames"
 #define GPU_STR_dashboard_OpenTimelineTooltip "Open the selected captured frame timeline for review"
 #define GPU_STR_dashboard_MainImageCaptionRunning "Running Frame"
@@ -485,15 +488,17 @@
 #define GPU_STR_timeline_QueueBranchNameWithParam "Queue (%1) - %2"
 #define GPU_STR_timeline_ContextBranchName "Context %1 (%2)"
 #define GPU_STR_timeline_QueueBranchName "Queue %1"
-#define GPU_STR_timeline_CmdListBranchName "CmdList %1"
-#define GPU_STR_timeline_CmdBufferBranchName "CmdBuffer %1"
+#define GPU_STR_timeline_CmdListBranchName "CmdList%1"
+#define GPU_STR_timeline_CmdBufferBranchName "CmdBuffer%1"
+#define GPU_STR_timeline_CmdListIsntanceBranchName "CmdList%1_%2"
+#define GPU_STR_timeline_CmdBufferInstanceBranchName "CmdBuffer%1_%2"
 #define GPU_STR_timeline_QueueAPICallsBranchName "API Calls"
 #define GPU_STR_timeline_CmdListsBranchName "Command Lists"
 #define GPU_STR_timeline_CmdBuffersBranchName "Command Buffers"
 #define GPU_STR_timeline_ContextBranchNameWithParam "Queue %1 - %2 (%3)"
 
 #define GPU_STR_DXAPITimeline_tooltipLine1 "Call #%1<br>%2"
-#define GPU_STR_APITimeline_TimeTooltipLine "Time: %3 - %4 (%5ms)"
+#define GPU_STR_APITimeline_TimeTooltipLine "Time: %3 - %4 (%5)"
 
 // Frame info xml
 #define GPU_STR_frameInfoXMLLocation "Location"
@@ -640,7 +645,8 @@
 #define GP_STR_SummaryTableColumnMaxTime "Max Time"
 #define GP_STR_SummaryTableColumnMinTime "Min Time"
 
-#define GP_STR_SummaryTableCommandListType "Command Buffer"
+#define GP_STR_SummaryTableCommandBufferType "Command Buffer"
+#define GP_STR_SummaryTableCommandListType "Command List"
 #define GP_STR_SummaryTableCommandListStartTime "Start time"
 #define GP_STR_SummaryTableCommandListEndTime "End time"
 #define GP_STR_SummaryTableCommandListExecutionTime "Execution time"
@@ -653,6 +659,7 @@
 #define GP_STR_SummaryTop20TableColumnThreadId "Thread Id"
 #define GP_STR_SummaryTop20TableColumnTime "Time"
 #define GP_STR_SummaryTop20TableShowAll "Show all..."
+#define GP_STR_SummaryCmdBufferToolTip "Command buffer was constructed in a previous frame."
 
 // draw calls ribbon
 #define GP_STR_DrawCallToolTip "%1: %2"

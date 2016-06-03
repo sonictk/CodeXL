@@ -14,17 +14,19 @@
 #include <AMDTRawDataFileHeader.h>
 #include <AMDTPwrProfDriver.h>
 #include <list>
+#include <AMDTOSWrappers/Include/osApplication.h>
 
 #define AMDT_PWR_STR_SYSTEM_IDLE "System Idle Process"
 #define AMDT_PWR_STR_SYSTEM "System"
 #define ERROR_READING_PROCESS_NAME "Unknown process"
 #define ERROR_READING_PROCESS_PATH "Unable to read path"
+typedef bool (* fpSmuActivate)(bool);
 
 #ifndef _LINUX
+    #include <TaskInfoInterface.h>
+    #include <CpuProfilingTranslationDLLBuild.h>
     #include <AMDTDriverControl/inc/DriverControl.h>
 #endif
-
-using namespace std;
 
 enum DriverCommandType
 {
@@ -103,7 +105,10 @@ AMDTResult PrepareInitialProcessList(list<ProcessName>& list);
 
 // GetProcessNameFromPid: Get process name from a given PID
 bool GetProcessNameFromPid(AMDTPwrProcessInfo* pInfo);
+// EnableSmu: Activate Smu feature
+bool EnableSmu(bool activate);
 
+// PwrApiCleanUp: Cleaning up Apis in case of unexpected abort
+bool PwrApiCleanUp(void);
 
 #endif //_POWERPROFILEDRIVERINTERFACE_H_
-

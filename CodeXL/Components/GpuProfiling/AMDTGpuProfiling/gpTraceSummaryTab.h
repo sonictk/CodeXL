@@ -27,7 +27,7 @@ class gpSummaryTab : public QWidget
 public:
     /// Ctor
     /// \param callType the type of items displayed in this tab
-    gpSummaryTab(eCallType callType);
+    gpSummaryTab(eCallType callType, quint64 timelineAbsoluteStart);
 
     /// Initializes the summary widget
     /// \param pDataContainer
@@ -87,7 +87,7 @@ signals:
 
     void TabSummaryItemClicked(ProfileSessionDataItem* pItem);
 
-    void TabSummaryCmdListClicked(const QString& commandList);
+    void TabSummaryCmdListDoubleClicked(const QString& commandList);
 
 protected:
     /// Handles item selection in timeline and trace tables.
@@ -114,6 +114,7 @@ protected:
     quint64 m_timelineStart;
     quint64 m_timelineEnd;
     QLabel* m_pTop20Caption;
+    CallIndexId m_currentCallIndex;
 
 private:
 
@@ -121,7 +122,7 @@ private:
 
     bool m_useTimelineSelectionScope;
     QString m_currentCallName;
-    CallIndexId m_currentCallIndex;
+    quint64 m_timelineAbsoluteStart;
 
 };
 
@@ -129,7 +130,7 @@ class gpTraceSummaryTab : public gpSummaryTab
 {
     Q_OBJECT
 public:
-    gpTraceSummaryTab(eCallType callType) :gpSummaryTab(callType) {}
+    gpTraceSummaryTab(eCallType callType, quint64 timelineAbsoluteStart) :gpSummaryTab(callType, timelineAbsoluteStart) {}
     virtual void RefreshAndMaintainSelection(bool check);
 
 public slots :
@@ -149,7 +150,7 @@ class gpCommandListSummaryTab : public gpSummaryTab
 {
     Q_OBJECT
 public:
-    gpCommandListSummaryTab(eCallType callType) :gpSummaryTab(callType) {}
+    gpCommandListSummaryTab(eCallType callType, quint64 timelineAbsoluteStart) :gpSummaryTab(callType, timelineAbsoluteStart) {}
     virtual void RefreshAndMaintainSelection(bool check);
 public slots :
     /// Handles selection change in summary table: updates top20 table accordingly

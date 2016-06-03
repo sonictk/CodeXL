@@ -126,22 +126,27 @@ gtASCIIString ProcessTracker::GetProcessesXML()
                 // check to see if this wrapper is in the application
                 gtASCIIString strPluginName = wrapperIter->second.strPluginName;
 
-                if (SG_GET_BOOL(OptionDllReplacement) == false)
+                // Do not report the DXGI API to the client as it is useless to the user.
+                // CodeXL does support connecting to the DXGI API and it appears in Vulkan/OpenGL apps which confuses the users.
+                if (wrapperIter->first != "DXGI")
                 {
-                    strPluginName += pluginExtensions[loop];
-                }
-
-                if (IsLibraryLoadedInProcess(pid, strPluginName.asCharArray(), NULL))
-                {
-                    bool attached = false;
-
-                    if (g_activeWrappersMap.find(FormatText("%lu/%s", pid, wrapperIter->first.c_str()).asCharArray()) != g_activeWrappersMap.end())
+                    if (SG_GET_BOOL(OptionDllReplacement) == false)
                     {
-                        // the pid/plugin string was listed in the active wrappers map, so the plugin must be active.
-                        attached = true;
+                        strPluginName += pluginExtensions[loop];
                     }
 
-                    procXMLMap[pid] += XMLAttrib("API", FormatText("attached='%s'", attached ? "TRUE" : "FALSE").asCharArray(), wrapperIter->second.strPluginShortDesc.asCharArray());
+                    if (IsLibraryLoadedInProcess(pid, strPluginName.asCharArray(), NULL))
+                    {
+                        bool attached = false;
+
+                        if (g_activeWrappersMap.find(FormatText("%lu/%s", pid, wrapperIter->first.c_str()).asCharArray()) != g_activeWrappersMap.end())
+                        {
+                            // the pid/plugin string was listed in the active wrappers map, so the plugin must be active.
+                            attached = true;
+                        }
+
+                        procXMLMap[pid] += XMLAttrib("API", FormatText("attached='%s'", attached ? "TRUE" : "FALSE").asCharArray(), wrapperIter->second.strPluginShortDesc.asCharArray());
+                    }
                 }
             }
         }
@@ -171,7 +176,7 @@ gtASCIIString ProcessTracker::GetProcessesXML()
 /// \param pRequestHeader The request header.
 /// \param client_socket The socket used for the request
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-static void HandleServerStatusResponse(GRAPHICS_SERVER_STATE serverState, HTTPRequestHeader* pRequestHeader, NetSocket* client_socket)
+void ProcessTracker::HandleServerStatusResponse(GRAPHICS_SERVER_STATE serverState, HTTPRequestHeader* pRequestHeader, NetSocket* client_socket)
 {
     char* strResquest = pRequestHeader->GetUrl();
 
@@ -1040,12 +1045,16 @@ bool ProcessTracker::PassRequestToPlugin(const char* strDestination,
             pRequestHeader->SetPostDataSize(0);
         }
 
+#ifdef CODEXL_GRAPHICS
+#ifdef USE_GRAPHICS_SERVER_STATUS_RETURN_CODES
         // Create a new record of this request
         // We will check to see when it comes back from the server.
-        //RequestInFlight* pNewRequest = new RequestInFlight(pRequestHeader, pClientSocket);
+        RequestInFlight* pNewRequest = new RequestInFlight(pRequestHeader, pClientSocket, pid);
 
         // Add the new record to the DB.
-        //RequestsInFlightDatabase::Instance()->Add(pClientSocket, pNewRequest);
+        RequestsInFlightDatabase::Instance()->Add(pClientSocket, pNewRequest);
+#endif
+#endif
 
         bResult = smPut(strDestination, pRequestHeader->GetHeaderData(), sizeof(HTTPHeaderData));
 

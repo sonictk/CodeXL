@@ -268,7 +268,7 @@ bool gpTraceView::DisplaySession(const osFilePath& sessionFilePath, afTreeItemTy
                 m_pSummaryTableTabWidget->Init(m_pSessionDataContainer, this, m_pTimeline->visibleStartTime(), m_pTimeline->visibleRange());
                 bool rc = connect(m_pSummaryTableTabWidget, SIGNAL(SummaryItemClicked(ProfileSessionDataItem*)), this, SLOT(OnSummaryItemClicked(ProfileSessionDataItem*)));
                 GT_ASSERT(rc);
-                rc = connect(m_pSummaryTableTabWidget, SIGNAL(SummaryCmdListClicked(const QString& )), m_pTimeline, SLOT(OnSummaryCmdListClicked(const QString&)));
+                rc = connect(m_pSummaryTableTabWidget, SIGNAL(SummaryCmdListDoubleClicked(const QString& )), m_pTimeline, SLOT(OnSummaryCmdListDoubleClicked(const QString&)));
                 GT_ASSERT(rc);
 
                 afApplicationCommands::instance()->EndPerformancePrintout("Summary");
@@ -749,7 +749,7 @@ void gpTraceView::SelectItemInTraceTables(ProfileSessionDataItem* pItem, bool se
                 for (int i = 0; i < m_pGPUTraceTablesTabWidget->count(); i++)
                 {
                     QString tabText = m_pGPUTraceTablesTabWidget->tabText(i);
-                    QString queueDisplayName = ProfileSessionDataItem::QueueDisplayName(pItem->QueueName());
+                    QString queueDisplayName = m_pSessionDataContainer->QueueDisplayName(pItem->QueueName());
 
                     if (tabText.contains(queueDisplayName))
                     {
@@ -979,7 +979,7 @@ void gpTraceView::SyncSelectionInAllTables(ProfileSessionDataItem* pDataItem)
     {
         QList<ProfileSessionDataItem*> items;
         // sync selection trace tables
-        int itemSampleId = pDataItem->GetSampleId();
+        int itemSampleId = pDataItem->SampleId();
         ClearSelectionInTraceTables(pDataItem->IsCPUItem());
 
         if (itemSampleId != 0)

@@ -284,7 +284,7 @@ bool kaApplicationTreeHandler::BuildContextMenuForItems(const gtList<const afApp
                 QString buildMenuStr = "Build";
                 m_pBuildAction->setText(buildMenuStr);
                 menu.addAction(m_pBuildAction);
-                m_pBuildAction->setEnabled(false);
+                m_pBuildAction->setEnabled(true);
 
                 QString cancelBuildMenuStr = KA_STR_CancelBuildASCII;
                 m_pCancelBuildAction->setText(cancelBuildMenuStr);
@@ -350,7 +350,7 @@ bool kaApplicationTreeHandler::BuildContextMenuForItems(const gtList<const afApp
 
             if (isMultiFileSelection)
             {
-                bool isInBuild = kaBackendManager::instance().isInBuild();
+                isInBuild = kaBackendManager::instance().isInBuild();
 
                 // Add the "Remove shader from program" action:
                 m_pRemoveAction->setText(KA_STR_removeFromProjectASCII);
@@ -1695,9 +1695,9 @@ void kaApplicationTreeHandler::RenameAllFileOccurencesInTree(const osFilePath& o
                     QTreeWidgetItem* pProgramItem = GetProgramTreeItem(pProgram);
                     GT_IF_WITH_ASSERT(pProgramItem != nullptr)
                     {
-                        for (int i = 0; i < pProgramItem->childCount(); i++)
+                        for (int j = 0; j < pProgramItem->childCount(); ++j)
                         {
-                            QTreeWidgetItem* pChild = pProgramItem->child(i);
+                            QTreeWidgetItem* pChild = pProgramItem->child(j);
                             afApplicationTreeItemData* pChildData = m_pApplicationTree->getTreeItemData(pChild);
 
                             if (pChildData != nullptr)
@@ -1945,7 +1945,19 @@ void kaApplicationTreeHandler::GetFileTypeString(kaFileTypes fileType, gtString&
             break;
     }
 }
-
+void kaApplicationTreeHandler::GetSelectedItemDatas(std::vector<afApplicationTreeItemData*>& result) const
+{
+    // This function can be called when the toolbar is created. Sometimes, m_pApplicationTree is not initialized.
+    // Do not assert at this point, this is a false assertion.
+    if (m_pApplicationTree != nullptr)
+    {
+        auto selectedItems = m_pApplicationTree->treeControl()->selectedItems();
+        for (auto selectedItem : selectedItems)
+        {
+            result.push_back(m_pApplicationTree->getTreeItemData(selectedItem));
+        }
+    }
+}
 afApplicationTreeItemData* kaApplicationTreeHandler::GetSelectedItemData()
 {
     afApplicationTreeItemData* pRetVal = nullptr;
@@ -2027,7 +2039,7 @@ afApplicationTreeItemData* kaApplicationTreeHandler::GetProgramItemData(kaProgra
 void kaApplicationTreeHandler::OnBuild()
 {
     gtVector<osFilePath> filesForBuild;
-    GT_IF_WITH_ASSERT(kaApplicationCommands::instance().activeCLFiles(filesForBuild) > 0)
+    GT_IF_WITH_ASSERT(activeBuildFiles(filesForBuild) > 0)
     {
         kaApplicationCommands::instance().buildCommand(filesForBuild);
     }
@@ -2136,7 +2148,7 @@ void kaApplicationTreeHandler::OnRename()
             kaTreeDataExtension* pKAData = qobject_cast<kaTreeDataExtension*>(pSelectedItemData->extendedItemData());
             QTreeWidgetItem* pSelectedItem = pSelectedItemData->m_pTreeWidgetItem;
 
-            if ((pSelectedItemData != nullptr) && (pKAData != nullptr) && (pSelectedItem != nullptr))
+            if (pKAData != nullptr && pSelectedItem != nullptr)
             {
                 // This slot can be accessed using the F2 shortcut key. We should not allow renaming of objects that cannot be renamed.
                 // We only allow rename of file items, and file references.
@@ -2322,14 +2334,14 @@ void kaApplicationTreeHandler::OnRemoveShaderFromProgram()
                    
                     const gtVector<kaProgram*> allPrograms = KA_PROJECT_DATA_MGR_INSTANCE.GetPrograms();
                     
-                    if(pKAData != nullptr)
+                    if (pKAData != nullptr)
                     {
-                        osFilePath filePath = pKAData->filePath();
-                        int fileId = KA_PROJECT_DATA_MGR_INSTANCE.GetFileID(filePath);
+                        const osFilePath filePath = pKAData->filePath();
+                        const int fileId = KA_PROJECT_DATA_MGR_INSTANCE.GetFileID(filePath);
                         // Count references
                         int fileRefCount = 0;
-                        
-                    
+
+
                         for (kaProgram* pProjectProgram : allPrograms)
                         {
                             if (pProjectProgram != nullptr && pProjectProgram->HasFile(fileId, AF_TREE_ITEM_ITEM_NONE))
@@ -2340,59 +2352,55 @@ void kaApplicationTreeHandler::OnRemoveShaderFromProgram()
                         // If the file being removed has single reference in this project it should be removed from project
                         bool shouldRemoveFromProject = (fileRefCount == 1);
 
-                        if (nullptr != pKAData)
+                        if ((pTreeItemData->m_itemType >= AF_TREE_ITEM_KA_FIRST_FILE_ITEM_TYPE) && (pTreeItemData->m_itemType <= AF_TREE_ITEM_KA_PROGRAM_GL_VERT))
                         {
-                            if ((pTreeItemData->m_itemType >= AF_TREE_ITEM_KA_FIRST_FILE_ITEM_TYPE) && (pTreeItemData->m_itemType <= AF_TREE_ITEM_KA_PROGRAM_GL_VERT))
+                            kaRenderingProgram* pRenderingProgram = dynamic_cast<kaRenderingProgram*>(pKAData->GetProgram());
+                            GT_IF_WITH_ASSERT(pRenderingProgram != nullptr)
                             {
-                                kaRenderingProgram* pRenderingProgram = dynamic_cast<kaRenderingProgram*>(pKAData->GetProgram());
-                                GT_IF_WITH_ASSERT(pRenderingProgram != nullptr)
-                                {
-                                    kaPipelinedProgram::PipelinedStage stage = kaRenderingProgram::TreeItemTypeToRenderingStage(pTreeItemData->m_itemType);
-                                    pRenderingProgram->SetFileID(stage, -1);
-                                    gtString stageNameAsString = ProgramItemTypeAsText(pTreeItemData->m_itemType, L"");
-                                    pContextMenuItem->setText(0, acGTStringToQString(stageNameAsString));
-                                    pContextMenuItem->setTextColor(0, acQLIST_EDITABLE_ITEM_COLOR);
-                                    pKAData->setFilePath(osFilePath());
-                                    pTreeItemData->m_filePath = osFilePath();
-                                }
+                                kaPipelinedProgram::PipelinedStage stage = kaRenderingProgram::TreeItemTypeToRenderingStage(pTreeItemData->m_itemType);
+                                pRenderingProgram->SetFileID(stage, -1);
+                                gtString stageNameAsString = ProgramItemTypeAsText(pTreeItemData->m_itemType, L"");
+                                pContextMenuItem->setText(0, acGTStringToQString(stageNameAsString));
+                                pContextMenuItem->setTextColor(0, acQLIST_EDITABLE_ITEM_COLOR);
+                                pKAData->setFilePath(osFilePath());
+                                pTreeItemData->m_filePath = osFilePath();
                             }
-                            else if (pTreeItemData->m_itemType == AF_TREE_ITEM_KA_PROGRAM_GL_COMP)
+                        }
+                        else if (pTreeItemData->m_itemType == AF_TREE_ITEM_KA_PROGRAM_GL_COMP)
+                        {
+                            kaComputeProgram* pComputeProgram = dynamic_cast<kaComputeProgram*>(pKAData->GetProgram());
+                            GT_IF_WITH_ASSERT(pComputeProgram != nullptr)
                             {
-                                kaComputeProgram* pComputeProgram = dynamic_cast<kaComputeProgram*>(pKAData->GetProgram());
-                                GT_IF_WITH_ASSERT(pComputeProgram != nullptr)
-                                {
-                                    pComputeProgram->SetFileID(-1);
-                                    gtString stageNameAsString = ProgramItemTypeAsText(pTreeItemData->m_itemType, L"");
-                                    pContextMenuItem->setText(0, acGTStringToQString(stageNameAsString));
-                                    pContextMenuItem->setTextColor(0, acQLIST_EDITABLE_ITEM_COLOR);
-                                    pKAData->setFilePath(osFilePath());
-                                    pTreeItemData->m_filePath = osFilePath();
-                                }
+                                pComputeProgram->SetFileID(-1);
+                                gtString stageNameAsString = ProgramItemTypeAsText(pTreeItemData->m_itemType, L"");
+                                pContextMenuItem->setText(0, acGTStringToQString(stageNameAsString));
+                                pContextMenuItem->setTextColor(0, acQLIST_EDITABLE_ITEM_COLOR);
+                                pKAData->setFilePath(osFilePath());
+                                pTreeItemData->m_filePath = osFilePath();
                             }
-                            else if (pTreeItemData->m_itemType == AF_TREE_ITEM_KA_PROGRAM_SHADER)
+                        }
+                        else if (pTreeItemData->m_itemType == AF_TREE_ITEM_KA_PROGRAM_SHADER)
+                        {
+                            kaNonPipelinedProgram* pNPProgram = dynamic_cast<kaNonPipelinedProgram*>(pKAData->GetProgram());
+                            GT_IF_WITH_ASSERT(pNPProgram != nullptr)
                             {
-                                kaNonPipelinedProgram* pNPProgram = dynamic_cast<kaNonPipelinedProgram*>(pKAData->GetProgram());
-                                GT_IF_WITH_ASSERT(pNPProgram != nullptr)
+                                GT_IF_WITH_ASSERT(fileId >= 0)
                                 {
-                                    int fileId = KA_PROJECT_DATA_MGR_INSTANCE.GetFileID(pKAData->filePath());
-                                    GT_IF_WITH_ASSERT(fileId >= 0)
+                                    pNPProgram->RemoveFile(fileId);
+                                    const afApplicationTreeItemData* pProgramItemData = FindParentItemDataOfType(pTreeItemData, AF_TREE_ITEM_KA_PROGRAM);
+                                    GT_IF_WITH_ASSERT((pProgramItemData != nullptr) && (pProgramItemData->m_pTreeWidgetItem != nullptr))
                                     {
-                                        pNPProgram->RemoveFile(fileId);
-                                        const afApplicationTreeItemData* pProgramItemData = FindParentItemDataOfType(pTreeItemData, AF_TREE_ITEM_KA_PROGRAM);
-                                        GT_IF_WITH_ASSERT((pProgramItemData != nullptr) && (pProgramItemData->m_pTreeWidgetItem != nullptr))
-                                        {
-                                            m_pApplicationTree->removeTreeItem(pTreeItemData->m_pTreeWidgetItem, false);
-                                        }
+                                        m_pApplicationTree->removeTreeItem(pTreeItemData->m_pTreeWidgetItem, false);
                                     }
                                 }
                             }
+                        }
 
-                            //removing entry from fileId-program multimap
-                            KA_PROJECT_DATA_MGR_INSTANCE.Disconnect(fileId, pKAData->GetProgram());
-                            if (shouldRemoveFromProject)
-                            {
-                                KA_PROJECT_DATA_MGR_INSTANCE.removeFile(filePath);
-                            }
+                        //removing entry from fileId-program multimap
+                        KA_PROJECT_DATA_MGR_INSTANCE.Disconnect(fileId, pKAData->GetProgram());
+                        if (shouldRemoveFromProject)
+                        {
+                            KA_PROJECT_DATA_MGR_INSTANCE.removeFile(filePath);
                         }
                     }
                 }
@@ -2716,25 +2724,88 @@ unsigned int kaApplicationTreeHandler::activeBuildFiles(gtVector<osFilePath>& fi
     if (retVal == 0)
     {
         // get current active file
-        const afApplicationTreeItemData* pItemData = GetSelectedItemData();
-        kaProgram* pProgram = nullptr;
-
-        if (pItemData != nullptr)
+        vector <afApplicationTreeItemData*> pItemDatas;
+        GetSelectedItemDatas(pItemDatas);
+        for (auto pItemData : pItemDatas)
         {
-            switch (pItemData->m_itemType)
-            {
-                case  AF_TREE_ITEM_KA_PROGRAM_GL_VERT:
-                case  AF_TREE_ITEM_KA_PROGRAM_GL_TESC:
-                case  AF_TREE_ITEM_KA_PROGRAM_GL_TESE:
-                case  AF_TREE_ITEM_KA_PROGRAM_GL_GEOM:
-                case  AF_TREE_ITEM_KA_PROGRAM_GL_FRAG:
-                case  AF_TREE_ITEM_KA_PROGRAM_GL_COMP:
-                case AF_TREE_ITEM_KA_PROGRAM:
-                    pKAData = qobject_cast<kaTreeDataExtension*>(pItemData->extendedItemData());
+            retVal += AddActiveBuildFiles(pItemData, filePaths);
+        }
 
-                    if (nullptr != pKAData)
+    }
+
+    if (retVal == 0)
+    {
+        filePaths = KA_PROJECT_DATA_MGR_INSTANCE.GetLastBuildFiles();
+        retVal = filePaths.size();
+    }
+
+    return retVal;
+}
+
+unsigned int kaApplicationTreeHandler::AddActiveBuildFiles(const afApplicationTreeItemData* pItemData, gtVector<osFilePath> &filePaths)
+{
+    unsigned int retVal = 0;
+    if (pItemData != nullptr)
+    {
+        switch (pItemData->m_itemType)
+        {
+        case  AF_TREE_ITEM_KA_PROGRAM_GL_VERT:
+        case  AF_TREE_ITEM_KA_PROGRAM_GL_TESC:
+        case  AF_TREE_ITEM_KA_PROGRAM_GL_TESE:
+        case  AF_TREE_ITEM_KA_PROGRAM_GL_GEOM:
+        case  AF_TREE_ITEM_KA_PROGRAM_GL_FRAG:
+        case  AF_TREE_ITEM_KA_PROGRAM_GL_COMP:
+        case AF_TREE_ITEM_KA_PROGRAM:
+        {
+            kaTreeDataExtension* pKAData = qobject_cast<kaTreeDataExtension*>(pItemData->extendedItemData());
+
+            if (nullptr != pKAData)
+            {
+                kaProgram* pProgram = pKAData->GetProgram();
+
+                if (pProgram != nullptr)
+                {
+                    pProgram->GetProgramFiles(filePaths);
+                }
+
+                retVal = filePaths.size();
+            }
+        }
+            break;
+
+        case AF_TREE_ITEM_KA_OUT_DIR:
+        case AF_TREE_ITEM_KA_STATISTICS:
+        case AF_TREE_ITEM_KA_DEVICE:
+        case AF_TREE_ITEM_KA_REF_TYPE:
+        {
+            kaProgram* pProgram = KA_PROJECT_DATA_MGR_INSTANCE.GetActiveProgram();
+
+            if (pProgram != nullptr)
+            {
+                pProgram->GetProgramFiles(filePaths);
+            }
+
+            retVal = filePaths.size();
+        }
+        break;
+
+        case AF_TREE_ITEM_KA_ADD_FILE:
+        case AF_TREE_ITEM_KA_NEW_FILE:
+        {
+            QTreeWidgetItem* pSelectedItem = pItemData->m_pTreeWidgetItem;
+
+            if (pSelectedItem != nullptr)
+            {
+                QTreeWidgetItem* pParentItem = pSelectedItem->parent();
+
+                if (pParentItem != nullptr)
+                {
+                    QVariant itemData = pParentItem->data(0, Qt::UserRole);
+                    afApplicationTreeItemData* pParentData = (afApplicationTreeItemData*)itemData.value<void*>();
+
+                    if ((pParentData != nullptr) && (pParentData->m_itemType == AF_TREE_ITEM_KA_PROGRAM))
                     {
-                        kaProgram* pProgram = pKAData->GetProgram();
+                        kaProgram* pProgram = KA_PROJECT_DATA_MGR_INSTANCE.GetActiveProgram();
 
                         if (pProgram != nullptr)
                         {
@@ -2743,65 +2814,14 @@ unsigned int kaApplicationTreeHandler::activeBuildFiles(gtVector<osFilePath>& fi
 
                         retVal = filePaths.size();
                     }
-
-                    break;
-
-                case AF_TREE_ITEM_KA_OUT_DIR:
-                case AF_TREE_ITEM_KA_STATISTICS:
-                case AF_TREE_ITEM_KA_DEVICE:
-                case AF_TREE_ITEM_KA_REF_TYPE:
-                {
-                    pProgram = KA_PROJECT_DATA_MGR_INSTANCE.GetActiveProgram();
-
-                    if (pProgram != nullptr)
-                    {
-                        pProgram->GetProgramFiles(filePaths);
-                    }
-
-                    retVal = filePaths.size();
                 }
-                break;
-
-                case AF_TREE_ITEM_KA_ADD_FILE:
-                case AF_TREE_ITEM_KA_NEW_FILE:
-                {
-                    QTreeWidgetItem* pSelectedItem = pItemData->m_pTreeWidgetItem;
-
-                    if (pSelectedItem != nullptr)
-                    {
-                        QTreeWidgetItem* pParentItem = pSelectedItem->parent();
-
-                        if (pParentItem != nullptr)
-                        {
-                            QVariant itemData = pParentItem->data(0, Qt::UserRole);
-                            afApplicationTreeItemData* pParentData = (afApplicationTreeItemData*)itemData.value<void*>();
-
-                            if ((pParentData != nullptr) && (pParentData->m_itemType == AF_TREE_ITEM_KA_PROGRAM))
-                            {
-                                pProgram = KA_PROJECT_DATA_MGR_INSTANCE.GetActiveProgram();
-
-                                if (pProgram != nullptr)
-                                {
-                                    pProgram->GetProgramFiles(filePaths);
-                                }
-
-                                retVal = filePaths.size();
-                            }
-                        }
-                    }
-                }
-                break;
-
-                default:
-                    break;
             }
         }
-    }
+        break;
 
-    if (retVal == 0)
-    {
-        filePaths = KA_PROJECT_DATA_MGR_INSTANCE.GetLastBuildFiles();
-        retVal = filePaths.size();
+        default:
+            break;
+        }
     }
 
     return retVal;
@@ -2998,14 +3018,18 @@ void kaApplicationTreeHandler::selectFileNode(const osFilePath& clFilePath)
 }
 
 
-void kaApplicationTreeHandler::OnBuildComplete(const gtString& filePath)
+void kaApplicationTreeHandler::OnBuildComplete(const gtString& programName)
 {
-    GT_UNREFERENCED_PARAMETER(filePath);
 
     // get the program that was build
-    kaProgram* pBuiltProgram = KA_PROJECT_DATA_MGR_INSTANCE.GetLastBuildProgram();
-    GT_IF_WITH_ASSERT(pBuiltProgram != nullptr)
+    auto& lastBuildPrograms = KA_PROJECT_DATA_MGR_INSTANCE.GetLastBuildProgram();
+    auto programItr = lastBuildPrograms.find(programName.asCharArray());
+    GT_IF_WITH_ASSERT(programItr != lastBuildPrograms.end())
     {
+        auto pBuiltProgram = programItr->second;
+		// remove from last programs hash_map , since it's needed only here for built completion operations only
+        lastBuildPrograms.erase(programItr);
+
         // check if this program wasn't deleted during build
         kaProgram* pSameProgramCheck = KA_PROJECT_DATA_MGR_INSTANCE.GetProgram(pBuiltProgram->GetProgramName());
 
@@ -3058,9 +3082,9 @@ void kaApplicationTreeHandler::OpenLastBuildStatisticsNode(kaProgram* pActivePro
 
                 GT_IF_WITH_ASSERT(lastBuldFilePaths.empty() == false)
                 {
-                    for (QTreeWidgetItem* pSearchNode : statsNodes)
+                    for (QTreeWidgetItem* pSearchNodeInner : statsNodes)
                     {
-                        afApplicationTreeItemData* pItemData = m_pApplicationTree->getTreeItemData(pSearchNode);
+                        afApplicationTreeItemData* pItemData = m_pApplicationTree->getTreeItemData(pSearchNodeInner);
                         GT_IF_WITH_ASSERT(pItemData != nullptr)
                         {
                             kaTreeDataExtension* pKAData = qobject_cast<kaTreeDataExtension*>(pItemData->extendedItemData());
@@ -3071,7 +3095,7 @@ void kaApplicationTreeHandler::OpenLastBuildStatisticsNode(kaProgram* pActivePro
 
                                 if (lastBuldFilePaths.find(path) != lastBuldFilePaths.end())
                                 {
-                                    m_pApplicationTree->scrollToItem(pSearchNode);
+                                    m_pApplicationTree->scrollToItem(pSearchNodeInner);
                                     pProgramTreeItem->setSelected(false);
 
                                     //unselect items besides statistics node to be opened
@@ -3080,9 +3104,9 @@ void kaApplicationTreeHandler::OpenLastBuildStatisticsNode(kaProgram* pActivePro
                                         pProgramTreeItem->child(i)->setSelected(false);
                                     }
 
-                                    pSearchNode->setSelected(true);
+                                    pSearchNodeInner->setSelected(true);
                                     //open statistics node
-                                    emit m_pApplicationTree->treeControl()->itemActivated(pSearchNode, 0);
+                                    emit m_pApplicationTree->treeControl()->itemActivated(pSearchNodeInner, 0);
                                     //found last build statistics node, breaking
                                     break;
                                 }
@@ -3850,7 +3874,6 @@ bool kaApplicationTreeHandler::ExecuteDropEvent(QDropEvent* pEvent, const QStrin
 void kaApplicationTreeHandler::DropOutertemsOnRelevantProgram(const QMimeData* pMimeData, QDropEvent* pEvent)
 {
     afApplicationTreeItemData* pProgramItemData = nullptr;
-    kaTreeDataExtension* pProgramKAItemData = nullptr;
     kaProgram* pProgram = nullptr;
     GT_IF_WITH_ASSERT((pMimeData != nullptr) && (pEvent != nullptr) && (m_pApplicationTree != nullptr))
     {
@@ -3881,7 +3904,7 @@ void kaApplicationTreeHandler::DropOutertemsOnRelevantProgram(const QMimeData* p
                 if (destinationItemType == AF_TREE_ITEM_KA_PROGRAM)
                 {
                     pProgramItemData = pDropDestinationItemData;
-                    pProgramKAItemData = qobject_cast<kaTreeDataExtension*>(pProgramItemData->extendedItemData());
+                    kaTreeDataExtension* pProgramKAItemData = qobject_cast<kaTreeDataExtension*>(pProgramItemData->extendedItemData());
 
                     if (pProgramKAItemData != nullptr)
                     {
@@ -4595,6 +4618,42 @@ const afApplicationTreeItemData*  kaApplicationTreeHandler::GetActiveProgramAppl
 
     return pProgramItemData;
 }
+
+
+void  kaApplicationTreeHandler::GetActiveProgramms(vector<kaProgram*>& activeProgramms) const
+{
+    set<const  afApplicationTreeItemData*> activeProgrammItemDatas;
+    GetActiveProgramApplicaionTreeData(activeProgrammItemDatas);
+
+    for  (const auto activeProgrammItemData : activeProgrammItemDatas)
+    {
+        kaTreeDataExtension* pKAData = qobject_cast<kaTreeDataExtension*>(activeProgrammItemData->extendedItemData());
+
+        if (pKAData != nullptr)
+        {
+            activeProgramms.push_back(pKAData->GetProgram());
+        }
+    }
+
+}
+/// We use set as output parameter , so we wouldn't have duplicates as a result
+void  kaApplicationTreeHandler::GetActiveProgramApplicaionTreeData(set<const  afApplicationTreeItemData*>& activeProgrammItemDatas) const
+{
+    vector<afApplicationTreeItemData*> pItemDatas;
+    GetSelectedItemDatas(pItemDatas);
+    for (auto pItemData : pItemDatas)
+    {
+        GT_IF_WITH_ASSERT(pItemData != nullptr)
+        {
+            const afApplicationTreeItemData* pProgramItemData = FindParentItemDataOfType(pItemData, AF_TREE_ITEM_KA_PROGRAM);
+            if (pProgramItemData)
+            {
+                activeProgrammItemDatas.insert(pProgramItemData);
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 void kaApplicationTreeHandler::SetNewFilePath(QTreeWidgetItem* treeItem, const osFilePath& filePath)
 {
@@ -5509,7 +5568,7 @@ afApplicationTreeItemData* kaApplicationTreeHandler::AddProgramTreeItemChild(QTr
 
                 if (fileId >= 0)
                 {
-                    gtString fileName;
+                    fileName.makeEmpty();
                     osFilePath refFilePath;
                     KA_PROJECT_DATA_MGR_INSTANCE.GetFilePathByID(fileId, refFilePath);
                     refFilePath.getFileNameAndExtension(fileName);

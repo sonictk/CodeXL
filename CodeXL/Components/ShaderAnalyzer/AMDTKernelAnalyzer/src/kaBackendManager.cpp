@@ -378,6 +378,11 @@ kaBackendManager& kaBackendManager::instance()
 kaBackendManager::~kaBackendManager()
 {
     // looks like Linux doesn't like it now that we moved KA as DLL into CodeXL.let's release it on windows only.
+    m_stopExecutionThread = true;
+    if (m_executionThread)
+    {
+        m_executionThread->join();
+    }
 #if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
     if (m_pBoost != nullptr && m_pBoost->m_pBuildThread != nullptr)
     {
@@ -1315,9 +1320,9 @@ void kaBackendManager::compileResultReady()
         m_isInBuild = false;
 
         // signal that all the build is done (empty source name):
-        emit buildComplete(L"");
+        emit buildComplete(GetLastBuildProgramName());
 
-        // (in windows clean temp files)
+        m_buildCompleted = true;
     }
 }
 
@@ -1936,8 +1941,6 @@ void kaBackendManager::BuildThread::run()
     m_shouldBeCanceled = false;
     // reset build succeded flag
     m_buildSucceded = false;
-    // Get the target directory.
-    kaBackendManager& theBackendManager = kaBackendManager::instance();
 
     // Get the full path where to write the output results.
     GT_ASSERT(m_pCurrentProgram != nullptr);
@@ -1962,98 +1965,6 @@ void kaBackendManager::BuildThread::run()
     }
 
 #endif
-    else
-    {
-        osFilePath sourceFile;
-        sourceFile.setFullPathFromString(theBackendManager.m_sourceCodeFullPathName);
-        kaSourceFile* pCurrentFile = KA_PROJECT_DATA_MGR_INSTANCE.dataFileByPath(sourceFile);
-        osDirectory targetDirectoryForOutput;
-        GT_IF_WITH_ASSERT(pCurrentFile != nullptr)
-        {
-            // Clear the build files list.
-            pCurrentFile->buildFiles().clear();
-
-            // Get the target directory.
-            targetDirectoryForOutput = pCurrentFile->buildDirectory();
-
-            // Create the output directory if it does not exist.
-            bool isOutputDirCreate = targetDirectoryForOutput.create();
-            GT_ASSERT(isOutputDirCreate);
-
-            // The output directory.
-            gtString buildOutputDir;
-
-            if (m_buildType != CL_BUILD)
-            {
-                // Create output directory for this kernel's build.
-                gtString kernelNameAsGtStr;
-                kernelNameAsGtStr << m_kernelName.c_str();
-                osFilePath kernelOutputPath = targetDirectoryForOutput.directoryPath();
-                kernelOutputPath.appendSubDirectory(kernelNameAsGtStr);
-
-                if (!kernelOutputPath.exists())
-                {
-                    osDirectory kernelOutputDir;
-                    kernelOutputDir.setDirectoryPath(kernelOutputPath);
-                    bool isOutputDirCreate1 = kernelOutputDir.create();
-                    GT_ASSERT(isOutputDirCreate1);
-                }
-
-                // Get the string representation of the build output directory.
-                buildOutputDir = kernelOutputPath.asString(true);
-            }
-            else
-            {
-                buildOutputDir = targetDirectoryForOutput.directoryPath().asString(true);
-            }
-
-            // Prepare the source code file's full path.
-            std::string sourceCodeFullPathName;
-            theBackendManager.m_sourceCodeFullPathName.asUtf8(sourceCodeFullPathName);
-
-            // Reset the status to non-successful.
-            m_compileStatus = beStatus_Invalid;
-
-            // Counter for the number of successful builds overall.
-            // Will be used to summarize the build results for the user.
-            int numOfSuccessfulBuilds = 0;
-            int numOfBuildsOverall = 0;
-
-            // Let reading timer pick up the new content before quiting.
-            // Note:  this thread is connected to a timer for controlling the
-            // timer's start and stop slots.
-            msleep(POLLING_TIME + 5);
-
-            // Notify the user that the build process is done.
-            if (m_shouldBeCanceled)
-            {
-                std::stringstream buildCanceledMsg;
-                int numOfSkippedDevices = numOfBuildsOverall - numOfSuccessfulBuilds;
-
-                if (numOfSkippedDevices > 0)
-                {
-                    buildCanceledMsg << KA_STR_BUILD_CANCELLED_BY_USER_PREFIX <<
-                                     (numOfBuildsOverall - numOfSuccessfulBuilds) << KA_STR_BUILD_CANCELLED_BY_USER_SUFFIX;
-                }
-                else
-                {
-                    buildCanceledMsg << KA_STR_BUILD_CANCELLED_BY_USER_NO_SKIPPED;
-                }
-
-                backendMessageCallback(buildCanceledMsg.str());
-                m_owner.readLog();
-            }
-            else
-            {
-                gtASCIIString message;
-                message.appendFormattedString(KA_STR_BUILD_COMPLETED_PREFIX, numOfBuildsOverall);
-                message.appendFormattedString("%d succeeded, %d failed", numOfSuccessfulBuilds, (numOfBuildsOverall - numOfSuccessfulBuilds));
-                message.appendFormattedString("%s", KA_STR_BUILD_COMPLETED_SUFFIX);
-                backendMessageCallback(message.asCharArray());
-                m_owner.readLog();
-            }
-        }
-    }
 }
 
 
@@ -2061,7 +1972,6 @@ void kaBackendManager::BuildThread::run()
 bool kaBackendManager::BuildThread::LaunchDxBuild(const gtString& buildOutputDir)
 {
     bool result = true;
-    const gtString isaFileName;
     int  numOfSuccessfulBuilds(0);
     const auto& ids = m_pCurrentProgram->GetFileIDsVector();
     gtList<kaSourceFile*>  sourceFiles = KA_PROJECT_DATA_MGR_INSTANCE.GetSourceFilesByIds(ids);
@@ -2232,84 +2142,113 @@ void kaBackendManager::PrepareProgramBuild(kaProgram* pProgram,
 //-------------------------------------------------------------------------------------------------------------
 void kaBackendManager::PrepareProgramBuildInner(kaProgram* pProgram, const BuildType buildType)
 {
-    if (m_pBoost != nullptr && m_pBoost->m_pBuildThread != nullptr)
+    // for multiple programs build we add programs into synchronized queue and execute them sequentially in parallel thread
+    m_executionWaitingList.push(make_pair(pProgram->Clone(), buildType));
+    if (m_executionThread == nullptr)
     {
-        m_pBoost->m_pBuildThread->m_buildType = buildType;
-        m_pBoost->m_pBuildThread->m_bitness = m_buildArchitecture;
-        m_pBoost->m_pBuildThread->m_deviceNames = m_selectedDeviceNamesForPendingBuild;
-        size_t numOfDevicesToBuild = m_selectedDeviceNamesForPendingBuild.size();
-        m_pBoost->m_pBuildThread->m_shadersPaths.Clear();
-        m_isInBuild = true;
-
-        // Print build prologue.
-        gtString programDisplayName = pProgram->GetProgramDisplayName();
-        PrintBuildPrologue(programDisplayName, numOfDevicesToBuild, false);
-
-        if (false == m_pBoost->m_pBuildThread->isRunning())
+        m_executionThread.reset(new std::thread(
+            [&]()
         {
-            m_pBoost->m_pBuildThread->m_pCurrentProgram.reset(pProgram->Clone());
-
-            if (pProgram != nullptr)
+            while (m_stopExecutionThread == false)
             {
-                const kaProgramTypes  programBuildType = pProgram->GetBuildType();
-
-                if (kaProgramVK_Compute == programBuildType || programBuildType == kaProgramGL_Compute)
+                // wait till new program to build added or execution stop signal received
+                while (m_stopExecutionThread == false && (m_buildCompleted == false || m_executionWaitingList.isEmpty()))
                 {
-                    kaComputeProgram* pVKCompute = dynamic_cast<kaComputeProgram*>(pProgram);
-
-                    if (pVKCompute != nullptr)
-                    {
-                        int computeShaderID = pVKCompute->GetFileID();
-                        osFilePath filePath;
-                        KA_PROJECT_DATA_MGR_INSTANCE.GetFilePathByID(computeShaderID, filePath);
-                        m_pBoost->m_pBuildThread->m_shadersPaths.m_computeShader = filePath.asString();
-                    }
+                    osSleep(50);
                 }
-                else if (kaProgramVK_Rendering == programBuildType || kaProgramGL_Rendering == programBuildType)
+                if (m_stopExecutionThread == false && 
+                    m_pBoost != nullptr && 
+                    m_pBoost->m_pBuildThread != nullptr &&
+                    m_buildCompleted &&
+                    m_executionWaitingList.isEmpty() == false)
                 {
-                    kaRenderingProgram* pRenderProgram = dynamic_cast<kaRenderingProgram*>(pProgram);
-
-                    if (pRenderProgram != nullptr)
-                    {
-                        pRenderProgram->GetPipelinePaths(m_pBoost->m_pBuildThread->m_shadersPaths);
-                    }
-
+                    auto programBuildType = m_executionWaitingList.pop();
+                    m_buildCompleted = false;
+                    ExecuteBuildThread(programBuildType.second, programBuildType.first);
+                    delete programBuildType.first;
                 }
-                else if (kaProgramCL == programBuildType)
-                {
-                    if (nullptr == m_pBoost->m_pCLOptions.get())
-                    {
-                        m_pBoost->m_pCLOptions.reset(new beProgramBuilderOpenCL::OpenCLOptions());
-                        m_pBoost->m_pCLOptions->m_SourceLanguage = beKA::SourceLanguage_OpenCL;
-                    }
-
-                    m_pBoost->m_pCLOptions->m_SelectedDevices = m_selectedDeviceNamesForPendingBuild;
-                    m_pBoost->m_pCLOptions->m_OpenCLCompileOptions.clear();
-
-                    QString qstrBuildOptions = KA_PROJECT_DATA_MGR_INSTANCE.BuildOptions();
-                    UpdateOBuildOption(qstrBuildOptions);
-                    m_pBoost->m_pCLOptions->m_OpenCLCompileOptions.push_back(string(qstrBuildOptions.toLatin1().constData()));
-                    m_pBoost->m_pBuildThread->m_pExternalOptions = m_pBoost->m_pCLOptions.get();
-
-                }
-
-#if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
-                else if (kaProgramDX == programBuildType)
-                {
-
-                    PreparedDxAdditionOptions(m_pBoost->m_pBuildThread->m_dxBuildOptions);
-                    // Print the message about the ignored options (if any).
-                    DxPrintIgnoredOptions();
-                }
-
-#endif
             }
-
-            m_pBoost->m_pBuildThread->start();
         }
-    }
+        ));
+    }//if m_executionThread == nullptr
 }
 
+void kaBackendManager::ExecuteBuildThread(const BuildType buildType, kaProgram* pProgram)
+{
+    m_pBoost->m_pBuildThread->m_buildType = buildType;
+    m_pBoost->m_pBuildThread->m_bitness = m_buildArchitecture;
+    m_pBoost->m_pBuildThread->m_deviceNames = m_selectedDeviceNamesForPendingBuild;
+    size_t numOfDevicesToBuild = m_selectedDeviceNamesForPendingBuild.size();
+    m_pBoost->m_pBuildThread->m_shadersPaths.Clear();
+    m_isInBuild = true;
+
+    // Print build prologue.
+    gtString programDisplayName = pProgram->GetProgramDisplayName();
+    PrintBuildPrologue(programDisplayName, numOfDevicesToBuild, false);
+
+    if (false == m_pBoost->m_pBuildThread->isRunning())
+    {
+        m_pBoost->m_pBuildThread->m_pCurrentProgram.reset(pProgram->Clone());
+
+        if (pProgram != nullptr)
+        {
+            const kaProgramTypes  programBuildType = pProgram->GetBuildType();
+
+            if (kaProgramVK_Compute == programBuildType || programBuildType == kaProgramGL_Compute)
+            {
+                kaComputeProgram* pVKCompute = dynamic_cast<kaComputeProgram*>(pProgram);
+
+                if (pVKCompute != nullptr)
+                {
+                    int computeShaderID = pVKCompute->GetFileID();
+                    osFilePath filePath;
+                    KA_PROJECT_DATA_MGR_INSTANCE.GetFilePathByID(computeShaderID, filePath);
+                    m_pBoost->m_pBuildThread->m_shadersPaths.m_computeShader = filePath.asString();
+                }
+            }
+            else if (kaProgramVK_Rendering == programBuildType || kaProgramGL_Rendering == programBuildType)
+            {
+                kaRenderingProgram* pRenderProgram = dynamic_cast<kaRenderingProgram*>(pProgram);
+
+                if (pRenderProgram != nullptr)
+                {
+                    pRenderProgram->GetPipelinePaths(m_pBoost->m_pBuildThread->m_shadersPaths);
+                }
+
+            }
+            else if (kaProgramCL == programBuildType)
+            {
+                if (nullptr == m_pBoost->m_pCLOptions.get())
+                {
+                    m_pBoost->m_pCLOptions.reset(new beProgramBuilderOpenCL::OpenCLOptions());
+                    m_pBoost->m_pCLOptions->m_SourceLanguage = beKA::SourceLanguage_OpenCL;
+                }
+
+                m_pBoost->m_pCLOptions->m_SelectedDevices = m_selectedDeviceNamesForPendingBuild;
+                m_pBoost->m_pCLOptions->m_OpenCLCompileOptions.clear();
+
+                QString qstrBuildOptions = KA_PROJECT_DATA_MGR_INSTANCE.BuildOptions();
+                UpdateOBuildOption(qstrBuildOptions);
+                m_pBoost->m_pCLOptions->m_OpenCLCompileOptions.push_back(string(qstrBuildOptions.toLatin1().constData()));
+                m_pBoost->m_pBuildThread->m_pExternalOptions = m_pBoost->m_pCLOptions.get();
+
+            }
+
+#if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
+            else if (kaProgramDX == programBuildType)
+            {
+
+                PreparedDxAdditionOptions(m_pBoost->m_pBuildThread->m_dxBuildOptions);
+                // Print the message about the ignored options (if any).
+                DxPrintIgnoredOptions();
+            }
+
+#endif
+        }
+
+        m_pBoost->m_pBuildThread->start();
+    }
+}
 
 #if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
 bool  kaBackendManager::PreparedDxAdditionOptions(DXAdditionalBuildOptions& additionalDxBuildOptions) const
@@ -2502,6 +2441,18 @@ gtVector<int> kaBackendManager::GetLastBuildProgramFileIds() const
     return result;
 }
 
+gtString kaBackendManager::GetLastBuildProgramName() const
+{
+    gtString result;
+
+    if (m_pBoost != nullptr && m_pBoost->m_pBuildThread != nullptr && m_pBoost->m_pBuildThread->m_pCurrentProgram != nullptr)
+    {
+        result = m_pBoost->m_pBuildThread->m_pCurrentProgram->GetProgramName();
+    }
+
+    return result;
+
+}
 #if AMDT_BUILD_TARGET==AMDT_WINDOWS_OS
 bool kaBackendManager::GetCurrentFileAdditonalDXBuildOptions(DXAdditionalBuildOptions& currentFileAdditionalBuildOptions) const
 {

@@ -4,11 +4,17 @@
 #ifndef _GPTRACESUMMARYTABLE_H_
 #define _GPTRACESUMMARYTABLE_H_
 
+// Infra:
 #include <AMDTApplicationComponents/Include/acFunctions.h>
 #include <AMDTApplicationComponents/Include/acListCtrl.h>
 #include <AMDTApplicationComponents/inc/acStringConstants.h>
-#include <AMDTGpuProfiling/AMDTGpuProfilerDefs.h>
 #include <AMDTOSWrappers/Include/osOSDefinitions.h>
+
+// AMDTApplicationFramework:
+#include <AMDTApplicationFramework/Include/afAppStringConstants.h>
+
+// Local:
+#include <AMDTGpuProfiling/AMDTGpuProfilerDefs.h>
 #include <AMDTGpuProfiling/gpTraceDataContainer.h>
 
 class gpTraceDataContainer;
@@ -108,17 +114,16 @@ public:
 
     void TableItemsAsString(QStringList& membersStringsList)
     {
-        if (0 != m_numCalls)
-        {
-            membersStringsList << m_index;
-            membersStringsList << QString::number(m_executionTimeMS, 'f', 6);
-            membersStringsList << QString::number(m_minTimeMs, 'f', 6);
-            membersStringsList << QString::number(m_maxTimeMs, 'f', 6);
-            membersStringsList << QString::number(m_numCalls);
-            membersStringsList << m_gpuQueue;
-            membersStringsList << m_address;
-        }
+        QString numCallsStr = (m_numCalls > 0) ? QString::number(m_numCalls) : AF_STR_NotAvailableA;
+        membersStringsList << m_index;
+        membersStringsList << QString::number(m_executionTimeMS, 'f', 3);
+        membersStringsList << QString::number(m_minTimeMs, 'f', 3);
+        membersStringsList << QString::number(m_maxTimeMs, 'f', 3);
+        membersStringsList << numCallsStr;
+        membersStringsList << m_gpuQueue;
+        membersStringsList << m_address;
     }
+
 
     QString m_index;
     QString m_address;
@@ -135,7 +140,7 @@ class gpSummaryTable : public acListCtrl
 
     Q_OBJECT
 public :
-    gpSummaryTable(gpTraceDataContainer* pDataContainer, gpTraceView* pSessionView, eCallType callType);
+    gpSummaryTable(gpTraceDataContainer* pDataContainer, gpTraceView* pSessionView, eCallType callType, quint64 timelineAbsoluteStart);
     virtual ~gpSummaryTable();
     // Save selection in summary table to be restored on tab switch
     // Restores selection
@@ -168,6 +173,7 @@ protected:
     gpTraceView* m_pTraceView;
 
     int m_lastSelectedRowIndex;
+    quint64 m_timelineAbsoluteStart;
 
 private:
     /// Fills table only with calls within the timeline start and end
@@ -199,7 +205,7 @@ public :
         COLUMN_NUM_OF_CALLS,
         COLUMN_COUNT
     };
-    gpTraceSummaryTable(gpTraceDataContainer* pDataContainer, gpTraceView* pSessionView, eCallType callType);
+    gpTraceSummaryTable(gpTraceDataContainer* pDataContainer, gpTraceView* pSessionView, eCallType callType, quint64 timelineAbsoluteStart);
 
     /// class destructor.
     virtual ~gpTraceSummaryTable();
@@ -250,12 +256,6 @@ private:
     /// Determines whether the table handles API or GPU items
     eCallType m_callType;
 
-    /// The session data container
-    gpTraceDataContainer* m_pSessionDataContainer;
-
-    /// A pointer to the parent session view
-    gpTraceView* m_pTraceView;
-
     /// Map containing UI information for each of the API calls. Each key may have multiple items
     QMap<CallIndexId, ProfileSessionDataItem*> m_allCallItemsMultiMap;
 
@@ -300,7 +300,7 @@ public:
         COLUMN_ADDRESS,
         COLUMN_COUNT
     };
-    gpCommandListSummaryTable(gpTraceDataContainer* pDataContainer, gpTraceView* pSessionView);
+    gpCommandListSummaryTable(gpTraceDataContainer* pDataContainer, gpTraceView* pSessionView, quint64 timelineAbsoluteStart);
 
     /// class destructor.
     virtual ~gpCommandListSummaryTable();
@@ -311,6 +311,7 @@ public:
 
     /// Returns an item by table row index
     bool GetItemCommandList(int row, QString& callName)const;
+    bool GetItemCommandListAddress(int row, QString& callName)const;
     bool GetItemQueueName(int row, QString& queueName)const;
     void SelectCommandList(const QString& commandListName);
 
@@ -338,13 +339,6 @@ private:
 
     APISummaryCommandListInfo GetSummaryInfo(const QString& callName);
 
-    /// The session data container
-    gpTraceDataContainer* m_pSessionDataContainer;
-
-    /// A pointer to the parent session view
-    gpTraceView* m_pTraceView;
-
-    int m_lastSelectedRowIndex;
     QMap<QString, APISummaryCommandListInfo> m_allInfoSummaryMap;
     QMap<QString, APISummaryCommandListInfo> m_apiCallInfoSummaryMap;
 
@@ -366,12 +360,25 @@ public:
     }
     virtual void setData(int role, const QVariant& value)
     {
-        QString valStr = QString::number(value.toDouble());
-        valStr.append(PERCENTAGE_SYMBOL);
-        QTableWidgetItem::setData(role, valStr);
+        if (role == Qt::DisplayRole)
+        {
+            QString valStr = QString::number(value.toDouble());
+            valStr.append(PERCENTAGE_SYMBOL);
+            m_text = valStr;
+            QTableWidgetItem::setData(role, valStr);
+        }
+        else
+        {
+            QTableWidgetItem::setData(role, value);
+        }
+    }
+    QString text()const
+    {
+        return m_text;
     }
 private:
     const char PERCENTAGE_SYMBOL[2] = "%";
+    QString m_text;
 };
 
 class FormattedTimeItem : public QTableWidgetItem

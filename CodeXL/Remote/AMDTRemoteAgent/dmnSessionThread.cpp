@@ -21,8 +21,10 @@
     #pragma warning ( pop )
 #endif
 
+// Infra
 #include <AMDTBaseTools/Include/AMDTDefinitions.h>
 #include <AMDTOSWrappers/Include/osStringConstants.h>
+#include <AMDTOSAPIWrappers/Include/oaDriver.h>
 
 #if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
     #define ZLIB_WINAPI
@@ -1055,6 +1057,18 @@ int dmnSessionThread::entryPoint()
                         GT_ASSERT(isOk);
                         break;
                     }
+                    case docIsHSAEnabled:
+                    {
+                        isOk = IsHSAEnabled();
+                        GT_ASSERT(isOk);
+                        break;
+                    }
+                    case docValidateAppPaths:
+                    {
+                        isOk = ValidateAppPaths();
+                        GT_ASSERT(isOk);
+                        break;
+                    }
 
                     default:
                     {
@@ -1182,6 +1196,56 @@ bool dmnSessionThread::KillRunningProcess()
         // Send a success status to CodeXL client after getting the command arguments
         ReportSuccess(m_pConnHandler);
     }
+
+    return retVal;
+}
+
+bool dmnSessionThread::IsHSAEnabled()
+{
+    bool retVal = false;
+    GT_IF_WITH_ASSERT(m_pConnHandler != nullptr)
+    {
+#if (AMDT_BUILD_TARGET == AMDT_WINDOWS_OS)
+        bool isHSAInstalled = false;
+#elif (AMDT_BUILD_TARGET == AMDT_LINUX_OS)
+        bool isHSAInstalled = oaIsHSADriver();
+#endif
+        (*m_pConnHandler) << isHSAInstalled;
+        retVal = true;
+
+        // Send a success status to CodeXL client after getting the command arguments
+        ReportSuccess(m_pConnHandler);
+    }
+
+    return retVal;
+}
+
+bool dmnSessionThread::ValidateAppPaths()
+{
+    GT_ASSERT(m_pConnHandler != nullptr);
+
+    bool retVal = true;
+
+    gtString appPath;
+    bool appPathValid = false;
+
+    retVal &= m_pConnHandler->readString(appPath);
+    osFilePath appFilePath(appPath);
+    osFile appFile(appFilePath);
+    appPathValid = appFile.IsExecutable();
+    (*m_pConnHandler) << appPathValid;
+
+    gtString workingDir;
+    bool workDirValid = false;
+
+    retVal &= m_pConnHandler->readString(workingDir);
+    osFilePath workingDirFilePath(workingDir);
+    osDirectory workingDirectory(workingDirFilePath);
+    workDirValid = workingDirectory.exists();
+    (*m_pConnHandler) << workDirValid;
+
+    // Send a success status to CodeXL client after getting the command arguments
+    ReportSuccess(m_pConnHandler);
 
     return retVal;
 }

@@ -72,6 +72,8 @@ enum DaemonOpCode
     // General utilities
     docIsProcessRunning,
     docKillRunningProcess,
+    docIsHSAEnabled,
+    docValidateAppPaths,
 
     docOpCodeCount
 };

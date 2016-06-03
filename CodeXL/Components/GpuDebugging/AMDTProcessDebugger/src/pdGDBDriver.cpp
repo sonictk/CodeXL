@@ -61,6 +61,7 @@
 #include <AMDTAPIClasses/Include/Events/apExceptionEvent.h>
 #include <AMDTAPIClasses/Include/Events/apInfrastructureFailureEvent.h>
 #include <AMDTAPIClasses/Include/Events/apEventsHandler.h>
+#include <AMDTApiFunctions/Include/gaGRApiFunctions.h>
 
 // Local:
 #include <src/pdStringConstants.h>
@@ -486,6 +487,7 @@ bool pdGDBDriver::executeGDBCommand(pdGDBCommandId gdbCommandId,
         {
             // Send the command string to gdb:
             _gdbOutputReader.resetGDBPrompt();
+
             bool rc2 = writeToGDBInput(commandString);
             GT_IF_WITH_ASSERT(rc2)
             {

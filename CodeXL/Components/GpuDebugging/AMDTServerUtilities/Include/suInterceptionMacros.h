@@ -15,6 +15,9 @@
 #include <AMDTBaseTools/Include/AMDTDefinitions.h>
 #include <AMDTOSAPIWrappers/Include/oaOpenGLIncludes.h>
 
+// Local:
+#include <AMDTServerUtilities/Include/suSWMRInstance.h>
+
 // Mac OSX interception utilities:
 #if ((AMDT_BUILD_TARGET == AMDT_LINUX_OS) && (AMDT_LINUX_VARIANT == AMDT_MAC_OS_X_LINUX_VARIANT))
     #include <AMDTServerUtilities/Include/suMacOSXInterception.h>
@@ -91,8 +94,14 @@
 // Author:      Uri Shomroni
 // Date:        14/10/2009
 // ---------------------------------------------------------------------------
+#ifdef SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC
+#define SU_START_FUNCTION_WRAPPER(funcId) \
+        suSWMRInstance::SharedLock();
+    su_stat_functionInterceptionInfo[funcId]._isCurrentlyInsideWrapper = true;
+#else // !defined(SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC)
 #define SU_START_FUNCTION_WRAPPER(funcId) \
     su_stat_functionInterceptionInfo[funcId]._isCurrentlyInsideWrapper = true;
+#endif
 
 // ---------------------------------------------------------------------------
 // Name:        SU_START_DRAW_FUNCTION_WRAPPER
@@ -358,7 +367,12 @@
 // Author:      Yaki Tebeka
 // Date:        30/11/2006
 // ---------------------------------------------------------------------------
-#define SU_START_FUNCTION_WRAPPER(funcId)
+#ifdef SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC
+#define SU_START_FUNCTION_WRAPPER(funcId) \
+    suSWMRInstance::SharedLock();
+#else // !defined(SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC)
+#define SU_START_FUNCTION_WRAPPER(funcId) 
+#endif
 
 // ---------------------------------------------------------------------------
 // Name:        SU_START_FUNCTION_WRAPPER
@@ -378,7 +392,12 @@
 // Author:      Yaki Tebeka
 // Date:        30/11/2006
 // ---------------------------------------------------------------------------
+#ifdef SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC
+#define SU_START_DRAW_FUNCTION_WRAPPER(funcId) if (gs_stat_isInNullOpenGLImplementationMode) { return; }; \
+    suSWMRInstance::SharedLock();
+#else // !defined(SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC)
 #define SU_START_DRAW_FUNCTION_WRAPPER(funcId) if (gs_stat_isInNullOpenGLImplementationMode) { return; };
+#endif
 
 
 // ---------------------------------------------------------------------------
@@ -397,7 +416,13 @@
 // Author:      Yaki Tebeka
 // Date:        30/11/2006
 // ---------------------------------------------------------------------------
+#ifdef SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC
+#define SU_END_FUNCTION_WRAPPER(funcId) if (!su_stat_interoperabilityHelper.isInNestedFunction()) {SU_TECHNOLOGY_MONITOR.afterMonitoredFunctionExecutionActions(funcId);}; \
+    suSWMRInstance::SharedUnLock();
+#else // !defined(SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC)
 #define SU_END_FUNCTION_WRAPPER(funcId) if (!su_stat_interoperabilityHelper.isInNestedFunction()) {SU_TECHNOLOGY_MONITOR.afterMonitoredFunctionExecutionActions(funcId);};
+#endif
+	
 
 // ---------------------------------------------------------------------------
 // Name:        SU_BEFORE_EXECUTING_REAL_FUNCTION

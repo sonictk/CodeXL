@@ -21,6 +21,7 @@
 
 // Infra:
 #include <AMDTBaseTools/Include/gtAssert.h>
+#include <AMDTApplicationComponents/Include/acColours.h>
 
 // Backend
 #include "../DX12Trace/DX12FunctionDefs.h"
@@ -35,19 +36,13 @@ static const QColor s_LIGHT_BLUE_PERF_MARKER_COLOR = QColor(173, 216, 230);
 
 APIColorMap::APIColorMap()
 {
-    m_commandListsColors << QColor(173, 216, 230);
-    m_commandListsColors << QColor(173, 0, 230);
-    m_commandListsColors << QColor(173, 216, 0);
-    m_commandListsColors << QColor(0, 216, 230);
-    m_commandListsColors << QColor(173, 23, 230);
-    m_commandListsColors << QColor(173, 216, 23);
-    m_commandListsColors << QColor(23, 216, 230);
-    m_commandListsColors << QColor(173, 255, 230);
-    m_commandListsColors << QColor(255, 216, 230);
-    m_commandListsColors << QColor(173, 216, 255);
-    m_commandListsColors << QColor(255, 255, 230);
-    m_commandListsColors << QColor(173, 255, 255);
-
+    m_commandListsColors << acQAMD_GREEN_OVERLAP_COLOUR;
+    m_commandListsColors << acQAMD_RED_OVERLAP_COLOUR;
+    m_commandListsColors << acQAMD_CYAN_OVERLAP_COLOUR;
+    m_commandListsColors << acQAMD_ORANGE_OVERLAP_COLOUR;
+    m_commandListsColors << acGetCodeXLColorScaleColor(AC_CODEXL_BLUE, 0);
+    m_commandListsColors << acQAMD_GRAY1_COLOUR;
+    m_commandListsColors << acGetCodeXLColorScaleColor(AC_CODEXL_MAGENTA, 2);
 }
 
 APIColorMap::~APIColorMap()
@@ -262,22 +257,18 @@ QColor APIColorMap::GetAPIColor(ProfileSessionDataItem::ProfileItemType itemType
             || (itemType.m_itemMainType == ProfileSessionDataItem::VK_GPU_PROFILE_ITEM))
         {
             // Get the Vulkan API type
-            vkAPIType apiType = vulkanFunctionDefs::GetAPIGroupFromAPI((vk_FUNC_TYPE)itemType.m_itemSubType);
+            vkAPIType apiType = vulkanFunctionDefs::GetAPIGroupFromAPI((VkFuncId)itemType.m_itemSubType);
 
             switch (apiType)
             {
-            case vkAPIType_Command:
-            {
-                retVal = QColor::fromRgb(255, 128, 0);
-                break;
-            }
 
-            case vkAPIType_CommandDraw:
+            case vkAPIType_CmdBufProfiled:
+            case vkAPIType_CmdBufNonProfiled:
             {
                 retVal = QColor::fromRgb(60, 24, 216);
                 break;
             }
-            case vkAPIType_General:
+            case vkAPIType_DescriptorSet:
             {
                 retVal = QColor::fromRgb(57, 151, 17);
                 break;
@@ -298,7 +289,7 @@ QColor APIColorMap::GetAPIColor(ProfileSessionDataItem::ProfileItemType itemType
                 retVal = QColor::fromRgb(230, 138, 0);
                 break;
             }
-            case vkAPIType_Queue:
+            case vkAPIType_QueueSubmission:
             {
                 retVal = QColor::fromRgb(14, 130, 94);
                 break;

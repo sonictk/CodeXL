@@ -27,6 +27,7 @@
 #include <src/suAPIFunctionsImplementations.h>
 #include <src/suAPIFunctionsStubs.h>
 #include <AMDTServerUtilities/Include/suSpyAPIFunctions.h>
+#include <AMDTServerUtilities/Include/suSWMRInstance.h>
 
 // iPhone on-device only items:
 #ifdef _GR_IPHONE_DEVICE_BUILD
@@ -78,6 +79,8 @@ void suRegisterAPIStubFunctions()
     suRegisterAPIFunctionStub(GA_FID_gaEnableImagesDataLogging, &gaEnableImagesDataLoggingStub);
     suRegisterAPIFunctionStub(GA_FID_gaSetFloatParametersDisplayPrecision, &gaSetFloatParametersDisplayPrecisionStub);
     suRegisterAPIFunctionStub(GA_FID_gaFlushAfterEachMonitoredFunctionCall, &gaFlushLogFileAfterEachFunctionCallStub);
+    suRegisterAPIFunctionStub(GA_FID_gaLockDriverThreads, &gaLockDriverThreadsStub);
+    suRegisterAPIFunctionStub(GA_FID_gaUnlockDriverThreads, &gaUnLockDriverThreadsStub);
 }
 
 
@@ -863,3 +866,37 @@ void gaFlushLogFileAfterEachFunctionCallStub(osSocket& apiSocket)
     // Return success value:
     apiSocket << retVal;
 }
+
+/////////////////////////////////////////////////////////////////////////////
+// \brief	Lock driver threads before process suspesion
+// \param       apiSocket a spy socket instance. Not use at now		
+// \author      Vadim Entov
+// \date        11/05/2016
+void gaLockDriverThreadsStub(osSocket& apiSocket)
+{
+    bool retVal = true;
+
+#ifdef SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC
+    suSWMRInstance::UniqueLock();
+#endif
+
+    apiSocket << retVal;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// \brief	UnLock driver threads before process resume
+// \param       apiSocket a spy socket instance. Not use at now		
+// \author      Vadim Entov
+// \date        11/05/2016
+void gaUnLockDriverThreadsStub(osSocket& apiSocket)
+{
+    bool retVal = true;
+
+#ifdef SU_USE_SINGLE_WRITE_MULTIPLE_READ_SYNC
+    suSWMRInstance::UniqueUnLock();
+#endif
+
+    apiSocket << retVal;
+}
+
+

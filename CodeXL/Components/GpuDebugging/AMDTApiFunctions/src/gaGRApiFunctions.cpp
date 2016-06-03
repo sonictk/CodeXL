@@ -805,6 +805,53 @@ bool gaGRApiFunctions::gaResumeDebuggedProcess()
 }
 
 /////////////////////////////////////////////////////
+/// \brief Lock driver threads in host process
+///
+/// \return true - success / false - failed
+/// \author Vadim Entov
+/// \date 15/05/2016
+bool gaGRApiFunctions::gaLockDriverThreads()
+{
+    OS_OUTPUT_DEBUG_LOG(L"Try lock threads", OS_DEBUG_LOG_DEBUG);
+
+    if (gaIsAPIConnectionActive(AP_SPIES_UTILITIES_API_CONNECTION))
+    {
+        osSocket& spyConnectionSocket = gaSpiesAPISocket();
+        spyConnectionSocket << (gtInt32)GA_FID_gaLockDriverThreads;
+
+        bool retVal;
+
+        spyConnectionSocket >> retVal;
+    }
+
+    return true;
+}
+
+/////////////////////////////////////////////////////
+/// \brief Unlock driver threads in host process
+///
+/// \return true - success / false - failed
+/// \author Vadim Entov
+/// \date 15/05/2016
+bool gaGRApiFunctions::gaUnLockDriverThreads()
+{
+    OS_OUTPUT_DEBUG_LOG(L"Try unlock threads", OS_DEBUG_LOG_DEBUG);
+
+    if (gaIsAPIConnectionActive(AP_SPIES_UTILITIES_API_CONNECTION))
+    {
+        osSocket& spyConnectionSocket = gaSpiesAPISocket();
+        spyConnectionSocket << (gtInt32)GA_FID_gaUnlockDriverThreads;
+
+        bool retVal;
+
+        spyConnectionSocket >> retVal;
+    }
+
+    return true;
+}
+
+
+/////////////////////////////////////////////////////
 /// \brief Suspend threads
 ///
 /// \param thrds a vector of threads native handles
@@ -12183,6 +12230,8 @@ GA_CONNECT_API_FUNCTION_WRAPPER_TO_GRAPIFUNCTIONS(gaDebuggedProcessExists, bool,
 GA_CONNECT_API_FUNCTION_WRAPPER_TO_GRAPIFUNCTIONS(gaTerminateDebuggedProcess, bool, (), ());
 GA_CONNECT_API_FUNCTION_WRAPPER_TO_GRAPIFUNCTIONS(gaSuspendDebuggedProcess, bool, (), ());
 GA_CONNECT_API_FUNCTION_WRAPPER_TO_GRAPIFUNCTIONS(gaResumeDebuggedProcess, bool, (), ());
+GA_CONNECT_API_FUNCTION_WRAPPER_TO_GRAPIFUNCTIONS(gaLockDriverThreads, bool, (), ());
+GA_CONNECT_API_FUNCTION_WRAPPER_TO_GRAPIFUNCTIONS(gaUnLockDriverThreads, bool, (), ());
 GA_CONNECT_API_FUNCTION_WRAPPER_TO_GRAPIFUNCTIONS(gaSuspendThreads, bool, (const std::vector<osThreadId>& thrds), (thrds));
 GA_CONNECT_API_FUNCTION_WRAPPER_TO_GRAPIFUNCTIONS(gaResumeThreads, bool, (), ());
 GA_CONNECT_API_FUNCTION_WRAPPER_TO_GRAPIFUNCTIONS(gaIsDebuggedProcessSuspended, bool, (), ());

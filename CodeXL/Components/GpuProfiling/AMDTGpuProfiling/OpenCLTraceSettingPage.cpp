@@ -25,6 +25,7 @@
 // AMDTApplicationFramework:
 #include <AMDTApplicationFramework/Include/afCSSSettings.h>
 #include <AMDTApplicationFramework/Include/afGlobalVariablesManager.h>
+#include <AMDTApplicationFramework/Include/afProjectManager.h>
 
 // Local:
 #include <AMDTGpuProfiling/gpStringConstants.h>
@@ -45,6 +46,7 @@
     #define NEED_TO_POP_SIGNALS_MACRO
 #endif
 #include "../HSAFdnCommon/HSAFunctionDefs.h"
+
 #if defined (NEED_TO_POP_SIGNALS_MACRO)
     #pragma pop_macro("signals")
 #endif
@@ -434,8 +436,11 @@ void OpenCLTraceOptions::RestoreDefaultProjectSettings()
 
 bool OpenCLTraceOptions::RestoreCurrentSettings()
 {
-    m_pOpenCLRadioButton->setChecked(m_currentSettings.m_apiToTrace == APIToTrace_OPENCL);
-    m_pHSARadioButton->setChecked(m_currentSettings.m_apiToTrace == APIToTrace_HSA);
+    const bool isHsaEnabled = Util::IsHSAEnabled();
+    const bool isRemote = afProjectManager::instance().currentProjectSettings().isRemoteTarget();
+    const bool openCLChecked = m_currentSettings.m_apiToTrace == APIToTrace_OPENCL || (isRemote && isHsaEnabled == false);
+    m_pOpenCLRadioButton->setChecked(openCLChecked);
+    m_pHSARadioButton->setChecked(m_currentSettings.m_apiToTrace == APIToTrace_HSA || (isRemote && isHsaEnabled));
     m_pShowAPIErrorCodeCB->setChecked(m_currentSettings.m_alwaysShowAPIErrorCode);
     m_pCollapseCallsCB->setChecked(m_currentSettings.m_collapseClGetEventInfo);
     m_pEnableNavigationCB->setChecked(m_currentSettings.m_generateSymInfo);
@@ -445,22 +450,19 @@ bool OpenCLTraceOptions::RestoreCurrentSettings()
     m_pMaxNumberOfAPIsSB->setValue(m_currentSettings.m_maxAPICalls);
 
     m_pTimeOutIntervalSB->setValue(m_currentSettings.m_timeoutInterval);
+    m_pHSARadioButton->setEnabled(isHsaEnabled);
+
 #if (AMDT_BUILD_TARGET == AMDT_WINDOWS_OS)
     m_pWriteDataTimeOutCB->setChecked(m_currentSettings.m_writeDataTimeOut);
     m_pTimeOutIntervalSB->setEnabled(m_currentSettings.m_writeDataTimeOut);
-    m_pHSARadioButton->setChecked(false);
-    m_pHSARadioButton->setEnabled(false);
 #elif (AMDT_BUILD_TARGET == AMDT_LINUX_OS)
     m_pWriteDataTimeOutCB->setChecked(true);
 
     // Check if the catalyst and HSA are installed, and enable / check the OpenCL / HSA button accordingly:
     bool isCatalystInstalled = (afGlobalVariablesManager::instance().InstalledAMDComponentsBitmask() & AF_AMD_CATALYST_COMPONENT);
-    bool isHSAInstalled = (afGlobalVariablesManager::instance().InstalledAMDComponentsBitmask() & AF_AMD_HSA_COMPONENT);
-
-    m_pHSARadioButton->setEnabled(isHSAInstalled);
     m_pOpenCLRadioButton->setEnabled(isCatalystInstalled);
 
-    if (!isCatalystInstalled)
+    if (!isCatalystInstalled && isRemote == false)
     {
         m_pHSARadioButton->setChecked(true);
     }
@@ -516,6 +518,9 @@ bool OpenCLTraceOptions::SetTraceOptions(APITraceOptions& apiTraceOptions)
 
 bool OpenCLTraceOptions::SaveCurrentSettings()
 {
+    const bool isHsaEnabled = Util::IsHSAEnabled();
+    m_pHSARadioButton->setEnabled(isHsaEnabled);
+
     m_currentSettings.m_apiToTrace = m_pOpenCLRadioButton->isChecked() ? APIToTrace_OPENCL : APIToTrace_HSA;
     m_currentSettings.m_alwaysShowAPIErrorCode = m_pShowAPIErrorCodeCB->isChecked();
     m_currentSettings.m_collapseClGetEventInfo = m_pCollapseCallsCB->isChecked();

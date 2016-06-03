@@ -2122,8 +2122,60 @@ public:
         return retVal;
     }
 
+    bool IsHSAEnabled()
+    {
+        bool retVal = false;
+        bool isHSAEnabled = false;
+        m_tcpClient << docIsHSAEnabled;
+        // Verify.
+        gtInt32 opStatus = dosFailure;
+        m_tcpClient >> opStatus;
+        retVal = (opStatus == dosSuccess);
+        GT_ASSERT_EX(retVal, L"OpCode receive ack.");
 
-    // Power Profiling - End.
+
+        if (retVal)
+        {
+            m_tcpClient >> isHSAEnabled;
+            // Verify that data was received by the remote agent
+            opStatus = dosFailure;
+            m_tcpClient >> opStatus;
+            retVal = (opStatus == dosSuccess);
+            GT_ASSERT_EX(retVal, L"OpCode receive ack.");
+        }
+        return isHSAEnabled;
+    }
+
+    bool ValidateAppPaths(const gtString& appFilePath, const gtString& workingFolderPath, bool& isAppValid, bool& isWorkingFolderValid)
+    {
+        bool retVal = false;
+        m_tcpClient << docValidateAppPaths;
+        // Verify.
+        gtInt32 opStatus = dosFailure;
+        m_tcpClient >> opStatus;
+        retVal = (opStatus == dosSuccess);
+        GT_ASSERT_EX(retVal, L"OpCode receive ack.");
+
+
+        if (retVal)
+        {
+            m_tcpClient << appFilePath;
+            m_tcpClient >> isAppValid;
+
+            m_tcpClient << workingFolderPath;
+            m_tcpClient >> isWorkingFolderValid;
+            
+            // Verify that data was received by the remote agent
+            opStatus = dosFailure;
+            m_tcpClient >> opStatus;
+            retVal = (opStatus == dosSuccess);
+            GT_ASSERT_EX(retVal, L"OpCode receive ack.");
+        }
+       
+        return retVal;
+    }
+
+
 private:
     long m_readTimeout;
     bool m_isConnected;
@@ -2172,6 +2224,33 @@ CXLDaemonClient::CXLDaemonClient(const osPortAddress& daemonAddress, long readTi
 
 }
 
+
+bool CXLDaemonClient::ValidateAppPaths(const osPortAddress& daemonAddress, const gtString& appFilePath, const gtString& workingFolderPath, bool& isAppValid, bool& isWorkingFolderValid)
+{
+    const unsigned CONNECTION_VALIDATION_TIMEOUT_MS = 5000;
+    isAppValid = isWorkingFolderValid = false;
+    bool ret = Init(daemonAddress, CONNECTION_VALIDATION_TIMEOUT_MS, true);
+    GT_IF_WITH_ASSERT(ret)
+    {
+        CXLDaemonClient* pClient = CXLDaemonClient::GetInstance();
+        GT_IF_WITH_ASSERT(pClient != NULL)
+        {
+            // We will not use this data.
+            osPortAddress tmpClientAddr;
+            // Check if we can connect.
+            ret = pClient->ConnectToDaemon(tmpClientAddr);
+
+            // If required, terminate this dummy session.
+            if (ret)
+            {
+                //TODO check paths valid
+                ret = pClient->ValidateAppPaths(appFilePath, workingFolderPath, isAppValid, isWorkingFolderValid);
+                pClient->TerminateWholeSession();
+            }
+        }
+    }
+    return ret;
+}
 
 CXLDaemonClient::~CXLDaemonClient(void)
 {
@@ -2717,4 +2796,26 @@ bool CXLDaemonClient::GetDaemonAddress(osPortAddress& address)
     }
 
     return false;
+}
+
+bool CXLDaemonClient::IsHSAEnabled()
+{
+    bool result = false;
+    if (m_pImpl != nullptr)
+    {
+        result = m_pImpl->IsHSAEnabled();
+    }
+
+    return result;
+}
+
+bool CXLDaemonClient::ValidateAppPaths(const gtString& appFilePath, const gtString& workingFolderPath, bool& isAppValid, bool& isWorkingFolderValid)
+{
+    bool result = false;
+    if (m_pImpl != nullptr)
+    {
+        result = m_pImpl->ValidateAppPaths(appFilePath, workingFolderPath, isAppValid, isWorkingFolderValid);
+    }
+
+    return result;
 }

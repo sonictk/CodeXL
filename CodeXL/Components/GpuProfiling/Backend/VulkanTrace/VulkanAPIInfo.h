@@ -6,6 +6,7 @@
 // Local:
 #include "../VulkanTrace/VulkanFunctionDefs.h"
 
+
 //------------------------------------------------------------------------------------
 /// DX12 API Base class
 //------------------------------------------------------------------------------------
@@ -23,13 +24,16 @@ public:
     vkAPIType m_apiType;
 
     /// Vulkan API ID, defined in VulkanFunctionDefs.h
-    vk_FUNC_TYPE m_apiId;
+    VkFuncId m_apiId;
 
     // The interface pointer as string
     std::string m_interfacePtrStr;
 
     /// True for GPU items
     bool m_isGPU;
+
+    /// The GPU command sample ID
+    int m_sampleId;
 
 };
 
@@ -44,14 +48,11 @@ public:
     /// Command list type (D3D12_COMMAND_LIST_TYPE)
     int m_commandListType;
 
-    /// The command queue pointer as string
-    std::string m_commandQueuePtrStr;
+    /// The command queue index as string
+    std::string m_queueIndexStr;
 
-    /// The command buffer pointer as string
-    std::string m_commandBufferPtrStr;
-
-    /// The GPU command sample ID
-    int m_sampleId;
+    /// The command buffer handle as string
+    std::string m_commandBufferHandleStr;
 };
 
 

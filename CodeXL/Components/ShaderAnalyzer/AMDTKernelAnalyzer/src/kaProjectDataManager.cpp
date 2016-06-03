@@ -123,7 +123,6 @@ kaProjectDataManager::kaProjectDataManager() : m_shaderD3dBuildOptionsMask(0),
 
     m_glShaderExtensions = QString(KA_STR_OpenGLShaderExtensions).split(AF_STR_CommaA);
     m_dxShaderExtensions = QString(KA_STR_DirectXShaderExtensions).split(AF_STR_CommaA);
-    m_pLastBuildProgram = nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -490,10 +489,9 @@ kaSourceFile* kaProjectDataManager::AddFileOnProjectLoad(const osFilePath& iFile
 // Author:      Gilad Yarnitzky
 // Date:        22/8/2013
 // ---------------------------------------------------------------------------
-bool kaProjectDataManager::removeFile(osFilePath& iFilePath)
+bool kaProjectDataManager::removeFile(const osFilePath& iFilePath)
 {
     bool retVal = false;
-
 
     size_t  id = m_sourceFileManager->GetFileId(iFilePath);
     retVal = m_sourceFileManager->Remove(id);
@@ -2440,6 +2438,22 @@ kaProgram* kaProjectDataManager::GetActiveProgram()
 
     return pRetVal;
 
+}
+
+void kaProjectDataManager::GetActiveProgramms(std::vector<kaProgram*>& programms)
+{
+    if (kaApplicationTreeHandler::instance() != nullptr)
+    {
+        kaApplicationTreeHandler::instance()->GetActiveProgramms(programms);
+    }
+}
+
+void kaProjectDataManager::SetLastBuildProgram(kaProgram* pProgram)
+{
+    if (pProgram)
+    {
+         m_pLastBuildProgram[pProgram->GetProgramName().asCharArray()]= pProgram;
+    }
 }
 
 const gtVector<osFilePath>& kaProjectDataManager::GetLastBuildFiles()const

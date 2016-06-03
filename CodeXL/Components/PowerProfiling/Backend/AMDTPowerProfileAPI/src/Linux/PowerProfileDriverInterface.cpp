@@ -56,6 +56,9 @@ static DRV_SIGINFO_CB g_eventCb     = nullptr;
 // global define
 AMDTUInt8* g_pSharedBuffer          = nullptr;
 
+//Function pointers for internal API
+fpSmuActivate g_fnSmuActivate = nullptr;
+
 namespace PwrProfDrvInterface
 {
 // thread synchronisation variable
@@ -367,11 +370,9 @@ AMDTResult CommandPowerDriver(DriverCommandType cmdType,
 {
     AMDTInt32 ret = AMDT_STATUS_OK;
 
-    // To avoid compiler warning
-    // using un-used variable
-    cmdType = cmdType;
+    GT_UNREFERENCED_PARAMETER(cmdType);
     inLen++;
-    pOutData = pOutData;
+    GT_UNREFERENCED_PARAMETER(pOutData);
     outlen++;
     pResult = pResult;
 
@@ -505,5 +506,24 @@ AMDTResult PrepareInitialProcessList(list<ProcessName>& list)
 #endif
 
     return ret;
+}
+
+// EnableSmu: enable Smu features
+bool EnableSmu(bool activate)
+{
+    bool retVal = false;
+
+    if (nullptr != g_fnSmuActivate)
+    {
+        retVal = g_fnSmuActivate(activate);
+    }
+
+    return retVal;
+}
+
+// PwrApiCleanUp: Cleaning up Apis in case of unexpected abort
+bool PwrApiCleanUp(void)
+{
+    return EnableSmu(false);
 }
 

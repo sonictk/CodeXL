@@ -42,15 +42,15 @@ public:
     /// Destructor
     ~gpTraceDataContainer();
 
-    class CommandListData
+    class CommandListInstanceData
     {
     public:
 
         /// Constructor
-        CommandListData();
+        CommandListInstanceData();
 
         /// The queue for which the command list belongs to
-        QString m_queueName;
+        QString m_commandListQueueName;
 
         /// A list of API calls indices
         QList<int> m_apiIndices;
@@ -61,8 +61,14 @@ public:
         /// The command list end time
         quint64 m_endTime;
 
-        /// Indicates from UI perspective , what row it shall belong to
-        size_t m_uiRowLocation;
+        /// The index of this command list instance execution
+        int m_instanceIndex;
+
+        /// The command list pointer
+        QString m_commandListPtr;
+
+        /// List of sample ids for this instance
+        QList<int> m_sampleIds;
     };
 
     /// Sets the session API calls count
@@ -224,15 +230,37 @@ public:
     ProfileSessionDataItem* FindNextItem(const QString& findStr, bool isCaseSensitive);
 
     /// Get the data collected for the frame command lists
-    const QMap<QString, gpTraceDataContainer::CommandListData>& CommandListsData() const { return m_commandListData; }
+    const QVector<CommandListInstanceData>& CommandListsData() const { return m_commandListInstancesVector; }
 
-    /// Contain the api type for this session
+    /// Is called when a command list / buffer close / end function is added. 
+    /// The function will analyze the command list API execution 
+    /// \param pAPIInfo the api info is expected to be of type DX12APIInfo or VKAPIInfo
+    void CloseCommandList(APIInfo* pAPIInfo);
+
+    /// Is called when a GPU call is added. The function is adding the GPU call to the matching command list
+    /// \param pApiInfo the structure describing the API info of the GPU call
+    /// \return the string describing the command list instance that executes this call
+    QString AddGPUCallToCommandList(APIInfo* pAPIInfo);
+
+    /// This function is used for command buffers that are created and built in previous frames, and are executed in this frame
+    /// These command buffers has no API calls attached
+    /// \param pAPIInfo the struct describing the command buffer execution
+    void AddBakedCommandBuffer(VKGPUTraceInfo* pAPIInfo);
+
+    /// Contain the API type for this session
     ProfileSessionDataItem::ProfileItemAPIType SessionAPIType() const { return m_sessionAPIType; };
 
     /// Return an indexed name for the command buffer / list from  it's pointer
     /// \param commandBufferPtrStr the command buffer / list pointer
+    /// \param instanceIndex the index of the command buffer / list execution
     /// \return a formatted name with the command buffer / list index
-    QString CommandListNameFromPointer(const QString& commandBufferPtrStr);
+    QString CommandListNameFromPointer(const QString& commandBufferPtrStr, int instanceIndex);
+
+    /// Return an indexed name for the command buffer / list matching this api call. The API call is executed on the GPU,
+    /// and should be contained in one of the command lists / buffers
+    /// \param pApiInfo* the GPU call api info
+    /// \return a formatted name with the command buffer / list index
+    QString GetContainingCommandList(APIInfo* pApiInfo);
 
     /// Return an indexed name for the queue from it's pointer
     /// \param queuePtrStr the queue list pointer
@@ -244,9 +272,8 @@ public:
     /// \return a formatted name with the queue index and type
     QString QueueDisplayName(const QString& queuePtrStr);
 
-
-private:
-    void UpdateUiRowLocations();
+    /// Returns the number of command lists \ buffers
+    int CommandListCount()const;
 
 private:
 
@@ -315,11 +342,14 @@ private:
     /// A map from command list / buffer pointer to an index
     QMap <QString, int> m_commandListPointerToIndexMap;
 
-    /// Map from command list pointer to command list data
-    QMap <QString, CommandListData> m_commandListData;
+    /// Vector of command list instances 
+    QVector<CommandListInstanceData> m_commandListInstancesVector;
 
     /// Contain the api type for this session
     ProfileSessionDataItem::ProfileItemAPIType m_sessionAPIType;
+
+    /// List of calls which has sample id and are not attached to a command list
+    QList<ProfileSessionDataItem*> m_commandListUnAttachedCalls;
 };
 
 #endif // _GPTRACEDATACONTAINER_H_

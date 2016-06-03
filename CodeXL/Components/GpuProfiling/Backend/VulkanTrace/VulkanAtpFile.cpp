@@ -41,7 +41,7 @@ const static std::string s_str_threadAPICountHeaderPrefix = "//ThreadAPICount=";
 
 // The Vulkan timestamps are double number. The data structures expect long long numbers, so we multiply the double timestamp by a GP_VK_TIMESTAMP_FACTOR
 // to make sure that we get integer value. In the front-end, we will perform the opposite operation
-#define GP_VK_TIMESTAMP_FACTOR 100000
+#define GP_VK_TIMESTAMP_MILLISECONDS_TO_NANOSECONDS_FACTOR 1000000
 
 VKAtpFilePart::VKAtpFilePart(const Config& config, bool shouldReleaseMemory) : IAtpFilePart(config, shouldReleaseMemory),
     m_currentParsedTraceType(API), m_currentParsedThreadID(0), m_currentParsedThreadAPICount(0),
@@ -102,12 +102,12 @@ bool VKAtpFilePart::ParseGPUAPICallString(const std::string& apiStr, VKGPUTraceI
     string temp;
     istringstream ss(apiStr);
 
-    ss >> apiInfo.m_commandQueuePtrStr;
+    ss >> apiInfo.m_queueIndexStr;
     CHECK_SS_ERROR(ss);
     ss >> apiInfo.m_commandListType;
     CHECK_SS_ERROR(ss);
 
-    ss >> apiInfo.m_commandBufferPtrStr;
+    ss >> apiInfo.m_commandBufferHandleStr;
     CHECK_SS_ERROR(ss);
 
     int intVal = 0;
@@ -117,7 +117,7 @@ bool VKAtpFilePart::ParseGPUAPICallString(const std::string& apiStr, VKGPUTraceI
 
     ss >> intVal;
     CHECK_SS_ERROR(ss);
-    apiInfo.m_apiId = (vk_FUNC_TYPE)intVal;
+    apiInfo.m_apiId = (VkFuncId)intVal;
 
     ss >> apiInfo.m_strName;
     CHECK_SS_ERROR(ss);
@@ -151,8 +151,8 @@ bool VKAtpFilePart::ParseGPUAPICallString(const std::string& apiStr, VKGPUTraceI
         ss >> timeEndDouble;
         CHECK_SS_ERROR(ss);
 
-        apiInfo.m_ullStart = ULONGLONG(timeStartDouble * GP_VK_TIMESTAMP_FACTOR);
-        apiInfo.m_ullEnd = ULONGLONG(timeEndDouble * GP_VK_TIMESTAMP_FACTOR);
+        apiInfo.m_ullStart = ULONGLONG(timeStartDouble * GP_VK_TIMESTAMP_MILLISECONDS_TO_NANOSECONDS_FACTOR);
+        apiInfo.m_ullEnd = ULONGLONG(timeEndDouble * GP_VK_TIMESTAMP_MILLISECONDS_TO_NANOSECONDS_FACTOR);
 
         /// Store the GPU start time if it is not stored yet
         /// GPU timestamps to fit the CPU timeline
@@ -168,10 +168,12 @@ bool VKAtpFilePart::ParseGPUAPICallString(const std::string& apiStr, VKGPUTraceI
             apiInfo.m_ullEnd = apiInfo.m_ullEnd - m_gpuStart + m_cpuEnd - (m_cpuEnd - m_cpuStart) / 3;
         }
 
-        ss >> apiInfo.m_sampleId;
-        CHECK_SS_ERROR(ss);
-
+        // Checking the status is done before attempting to read 'sample id' because 
+        // the reading of 'sample id' is not critical and can fail without affecting the rest of the parsing.
         retVal = (!ss.fail());
+
+        apiInfo.m_sampleId = 0;
+        ss >> apiInfo.m_sampleId;
     }
 
     return retVal;
@@ -186,7 +188,7 @@ bool VKAtpFilePart::ParseSectionHeaderLine(const string& line)
     {
         retVal = true;
 
-        if (line == "//==GPU Trace==")
+        if (line.find("//==GPU Trace==") == 0)
         {
             // Switch to GPU trace
             m_currentParsedTraceType = GPU;
@@ -230,7 +232,7 @@ bool VKAtpFilePart::ParseSectionHeaderLine(const string& line)
 
 /// Expecting the following API call format:
 /// Type
-/// vkAPIType   vk_FUNC_TYPE    InterfacePtr       Interface_Call                       Args                                     = Result     StartTime       EndTime        GPUCallIndex
+/// vkAPIType   VkFuncId    InterfacePtr       Interface_Call                       Args                                     = Result     StartTime       EndTime        GPUCallIndex
 /// 128         90              0x0000000000000000 NonTrackedObject_vkBeginCommandBuffer(0x00000001362066F0, 0x000000009F7DE710) = VK_SUCCESS 89349181.540584 89365867.767216 0
 bool VKAtpFilePart::ParseCPUAPICallString(const std::string& apiStr, VKAPIInfo& apiInfo)
 {
@@ -250,7 +252,7 @@ bool VKAtpFilePart::ParseCPUAPICallString(const std::string& apiStr, VKAPIInfo& 
     // Get the API ID
     ss >> intVal;
     CHECK_SS_ERROR(ss);
-    apiInfo.m_apiId = (vk_FUNC_TYPE)intVal;
+    apiInfo.m_apiId = (VkFuncId)intVal;
 
     // Get the interface name
     ss >> apiInfo.m_interfacePtrStr;
@@ -289,8 +291,8 @@ bool VKAtpFilePart::ParseCPUAPICallString(const std::string& apiStr, VKAPIInfo& 
         ss >> timeEndDouble;
         CHECK_SS_ERROR(ss);
 
-        apiInfo.m_ullStart = ULONGLONG(timeStartDouble * GP_VK_TIMESTAMP_FACTOR);
-        apiInfo.m_ullEnd = ULONGLONG(timeEndDouble * GP_VK_TIMESTAMP_FACTOR);
+        apiInfo.m_ullStart = ULONGLONG(timeStartDouble * GP_VK_TIMESTAMP_MILLISECONDS_TO_NANOSECONDS_FACTOR);
+        apiInfo.m_ullEnd = ULONGLONG(timeEndDouble * GP_VK_TIMESTAMP_MILLISECONDS_TO_NANOSECONDS_FACTOR);
 
         // Store the CPU start and end time (if not stored yet)
         if (m_cpuStart == 0)
@@ -301,6 +303,9 @@ bool VKAtpFilePart::ParseCPUAPICallString(const std::string& apiStr, VKAPIInfo& 
         {
             m_cpuEnd = apiInfo.m_ullEnd;
         }
+
+        ss >> apiInfo.m_sampleId;
+        CHECK_SS_ERROR(ss);
 
         retVal = (!ss.fail());
     }
@@ -388,7 +393,6 @@ bool VKAtpFilePart::Parse(std::istream& in, std::string& outErrorMsg)
                     else
                     {
                         delete pAPIInfo;
-                        SpBreak("Failed parsing");
                     }
 
                     // Update the progress bar

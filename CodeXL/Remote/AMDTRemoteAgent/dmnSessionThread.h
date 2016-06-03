@@ -95,6 +95,11 @@ private:
 
     /// Kill a running process by it's name
     bool KillRunningProcess();
+    
+    /// Returns true if HSA enabled 
+    bool IsHSAEnabled();
+
+    bool ValidateAppPaths();
 
 private:
     osTCPSocketServerConnectionHandler* m_pConnHandler;

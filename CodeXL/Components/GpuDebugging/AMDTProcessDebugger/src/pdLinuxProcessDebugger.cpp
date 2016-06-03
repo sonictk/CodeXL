@@ -890,6 +890,8 @@ bool pdLinuxProcessDebugger::resumeDebuggedProcess()
     {
         if (_isUnderHostBreakpoint)
         {
+            gaUnLockDriverThreads();
+
             retVal = tryResumeProcess();
         }
 
@@ -4241,6 +4243,8 @@ bool pdLinuxProcessDebugger::performHostStep(osThreadId threadId, StepType stepT
 
     bool before = false;
 
+    gaUnLockDriverThreads();
+
     if (_isDuringInternalContinue)
     {
         trySuspendProcess(before);
@@ -4657,6 +4661,7 @@ bool pdLinuxProcessDebugger::suspendHostDebuggedProcess()
     bool result = false;
     bool bSuspendedBefore = false;
 
+    gaLockDriverThreads();
     result = trySuspendProcess(bSuspendedBefore);
 
     GT_IF_WITH_ASSERT(result)
