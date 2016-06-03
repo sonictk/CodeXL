@@ -216,6 +216,7 @@ protected:
     CpuProfileReader*                   m_pProfileReader;
     CpuProfileInfo*                     m_pProfileInfo;
     shared_ptr<cxlProfileDataReader>    m_pCpuProfDataReader;
+    shared_ptr<DisplayFilter>           m_pDisplayFilter;
 
     /// Tree item data:
     afApplicationTreeItemData* m_pDisplayedSessionItemData;

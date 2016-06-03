@@ -54,7 +54,7 @@ protected:
 
     /// Fill the list data according to the requested item:
     bool fillListData();
-
+	bool fillTableData();
     bool FillTableSummaryData(AMDTUInt32 mid);
 
     /// Check if the module should be displayed or filtered:

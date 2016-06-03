@@ -41,6 +41,9 @@ protected:
     /// Fill the list data according to the requested item:
     bool fillListData();
 
+	bool fillTableData();
+
+
     virtual bool HandleHotSpotIndicatorChange(AMDTUInt32 mid);
 
     bool FillTableSummaryData(AMDTUInt32 mid);

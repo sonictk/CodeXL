@@ -102,7 +102,7 @@ DisplayFilterDlg::displayDialog(const QString& sessionPath, bool enableOnlySyste
         {
             m_pProfDataReader   = m_pCurrentSessionWindow->profDbReader();
 
-            m_displayFilter     = DisplayFilter::GetInstance();
+            m_displayFilter     = m_pCurrentSessionWindow->GetDisplayFilter();
             m_noOfCores         = m_displayFilter->GetCpuCoreCnt();
 
             m_pSessionTreeItemData = (afApplicationTreeItemData*)
@@ -766,3 +766,4 @@ void DisplayFilterDlg::updateHiddenColumnList()
         }
     }
 }
+

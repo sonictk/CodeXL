@@ -36,10 +36,72 @@ ProcessesDataTable::~ProcessesDataTable()
 
 }
 
+bool ProcessesDataTable::fillTableData()
+{
+	bool retVal = false;
+
+	GT_IF_WITH_ASSERT((m_cpuProfDataReader.get() != nullptr) &&
+		(m_pSessionDisplaySettings != nullptr) &&
+		(m_pTableDisplaySettings != nullptr))
+	{
+		// get samples for Data cache access events
+		AMDTProfileSessionInfo sessionInfo;
+
+		bool rc = m_cpuProfDataReader->GetProfileSessionInfo(sessionInfo);
+		GT_ASSERT(rc);
+
+		gtVector<AMDTProfileData> allProcessData;
+		rc = m_cpuProfDataReader->GetProcessProfileData(AMDT_PROFILE_ALL_PROCESSES, allProcessData);
+		GT_ASSERT(rc);
+
+		bool isSorting = isSortingEnabled();
+		if (true == isSorting)
+		{
+			setSortingEnabled(false);
+		}
+
+		for (auto profData : allProcessData)
+		{
+			QStringList list;
+
+			std::vector<gtString> selectedCounterList;
+
+			// insert module id 
+			QVariant mId(profData.m_moduleId);
+			list << mId.toString();
+
+			// Insert process name
+			list << profData.m_name.asASCIICharArray();
+
+			// insert PID
+			QVariant pId(profData.m_id);
+			list << pId.toString();
+
+			m_displaFilter->GetSelectedCounterList(selectedCounterList);
+			int i = 0;
+
+			for (auto counter : selectedCounterList)
+			{
+				QVariant sampleCount(profData.m_sampleValue.at(i++).m_sampleCount);
+				list << sampleCount.toString();
+
+			}
+			addRow(list, nullptr);
+		}
+		setSortingEnabled(true);
+
+		retVal = true;
+	}
+
+	return retVal;
+}
+
 bool ProcessesDataTable::fillListData()
 {
-    bool retVal = false;
+    bool retVal = true;
 
+
+#if 0
     GT_IF_WITH_ASSERT((m_pProfileReader != nullptr) && (m_pSessionDisplaySettings != nullptr))
     {
         m_pathToValuesMap.clear();
@@ -78,6 +140,8 @@ bool ProcessesDataTable::fillListData()
     }
 
     retVal &= CPUProfileDataTable::fillListData();
+#endif
+
     return retVal;
 }
 
@@ -265,7 +329,10 @@ bool ProcessesDataTable::addProcessItem(ProcessIdType pid, const CpuProfileProce
 }
 
 
-bool ProcessesDataTable::collectProcessDisplayedDataColumnValues(ProcessIdType pid, const CpuProfileProcess& process, int rowIndex, gtVector<float>& processDataVector)
+bool ProcessesDataTable::collectProcessDisplayedDataColumnValues(ProcessIdType pid, 
+																const CpuProfileProcess& process, 
+																int rowIndex, 
+																gtVector<float>& processDataVector)
 {
     (void)(process); // unused
     (void)(rowIndex); // unused

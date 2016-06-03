@@ -73,9 +73,7 @@ private:
 typedef gtMap<QString, ViewElementType> ConfigurationMap;
 class SessionDisplaySettings
 {
-
 public:
-
 
     SessionDisplaySettings();
     virtual ~SessionDisplaySettings();
@@ -200,7 +198,8 @@ public:
         MODULE_SYMBOLS_LOADED,
         SOURCE_FILE_COL,
         SELF_SAMPLE_PERCENTAGE_OF_ALL_SAMPLE_COL,
-        SELF_SAMPLE_PERCENTAGE_OF_MODULE_SAMPLE_COL
+        SELF_SAMPLE_PERCENTAGE_OF_MODULE_SAMPLE_COL,
+        MODULE_ID
     };
 
     bool colTypeAsString(ProfileDataColumnType column, QString& colStr, QString& tooltip);
@@ -277,11 +276,11 @@ public:
     bool SetReportConfig();
     const gtVector<AMDTProfileReportConfig>& GetReportConfig() const;
 
-    bool SetCounterPerColCheckBox(QString checkBoxName);
+    //bool SetCounterPerColCheckBox(QString checkBoxName);
 
     const QString& GetCurrentCofigName() const { return m_configurationName; }
 
-    static DisplayFilter* GetInstance();
+    //static DisplayFilter* GetInstance();
     
     void SetProfDataReader(shared_ptr<cxlProfileDataReader> reader) { m_pProfDataReader = reader; }
 
@@ -304,6 +303,8 @@ public:
     AMDTUInt64 GetCoreMask() const { return m_options.m_coreMask; }
     bool InitToDefault();
 
+	void GetSupportedCountersList(std::vector<gtString>& counterList);
+
    int GetCpuCoreCnt() const;
    const void GetConfigName(std::vector<gtString>& configNameList) const { configNameList = m_configNameList; }
 
@@ -315,11 +316,13 @@ public:
    void SetSelectedCounterList(const std::vector<gtString>& list) { m_selectedCountersIdList.clear();  m_selectedCountersIdList = list; }
    void GetSelectedCounterList(std::vector<gtString>& list) { list = m_selectedCountersIdList;}
 
+   DisplayFilter();
+
 private:
     
-    static DisplayFilter* m_instance;
+    //static DisplayFilter* m_instance;
+    void SetProfileDataOption();
 
-    DisplayFilter();
 
     std::shared_ptr<cxlProfileDataReader>   m_pProfDataReader;
     gtVector<AMDTProfileReportConfig>       m_reportConfigs;
@@ -329,7 +332,7 @@ private:
     std::vector<gtString>                   m_configNameList;
     CounterNameIdMap                        m_counterNameIdMap;
     CounterIdNameMap                        m_counterIdNameMap;
-    std::vector<gtString>                 m_selectedCountersIdList;
+    std::vector<gtString>                   m_selectedCountersIdList;
 };
 
 #endif //__DISPLAYFILTER_H

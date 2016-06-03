@@ -40,6 +40,64 @@ ModulesDataTable::~ModulesDataTable()
 {
 }
 
+bool ModulesDataTable::fillTableData()
+{
+	bool retVal = false;
+
+	GT_IF_WITH_ASSERT((m_cpuProfDataReader.get() != nullptr) &&
+		(m_pSessionDisplaySettings != nullptr) &&
+		(m_pTableDisplaySettings != nullptr))
+	{
+		// get samples for Data cache access events
+		AMDTProfileSessionInfo sessionInfo;
+
+		bool rc = m_cpuProfDataReader->GetProfileSessionInfo(sessionInfo);
+		GT_ASSERT(rc);
+
+		gtVector<AMDTProfileData> allProcessData;
+		rc = m_cpuProfDataReader->GetModuleProfileData(AMDT_PROFILE_ALL_PROCESSES, AMDT_PROFILE_ALL_MODULES, allProcessData);
+		GT_ASSERT(rc);
+
+		bool isSorting = isSortingEnabled();
+		if (true == isSorting)
+		{
+			setSortingEnabled(false);
+		}
+
+		for (auto profData : allProcessData)
+		{
+			QStringList list;
+
+			std::vector<gtString> selectedCounterList;
+
+			// insert module id 
+			QVariant mId(profData.m_moduleId);
+			list << mId.toString();
+
+			// Insert process name
+			list << profData.m_name.asASCIICharArray();
+
+			// insert PID
+			QVariant pId(profData.m_id);
+			list << pId.toString();
+
+			m_displaFilter->GetSelectedCounterList(selectedCounterList);
+			int i = 0;
+
+			for (auto counter : selectedCounterList)
+			{
+				QVariant sampleCount(profData.m_sampleValue.at(i++).m_sampleCount);
+				list << sampleCount.toString();
+			}
+
+			addRow(list, nullptr);
+
+		}
+	}
+
+	return retVal;
+}
+
 bool ModulesDataTable::FillTableSummaryData(AMDTUInt32 mid)
 {
     bool retVal = false;

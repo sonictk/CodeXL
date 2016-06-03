@@ -112,7 +112,7 @@ private:
     QHBoxLayout* m_pNUMALayout                          = nullptr;
     QHBoxLayout* m_pButtonBox                           = nullptr;
     bool m_enableOnlySystemDll                          = false;
-    DisplayFilter* m_displayFilter                      = nullptr;
+    shared_ptr<DisplayFilter> m_displayFilter           = nullptr;
 
     std::shared_ptr<cxlProfileDataReader>   m_pProfDataReader;
     shared_ptr<cofigNameCounterMap>         m_CongigrationMap;

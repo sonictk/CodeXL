@@ -202,13 +202,13 @@ bool CpuSessionWindow::display()
     {
         openDataReader();
 
-        DisplayFilter *filter =  DisplayFilter::GetInstance();
-        filter->SetProfDataReader(m_pCpuProfDataRd);
-        retVal = filter->CreateConfigCounterMap();
+        m_pDisplayFilter.reset(new DisplayFilter);
+        m_pDisplayFilter->SetProfDataReader(m_pCpuProfDataRd);
+        retVal = m_pDisplayFilter->CreateConfigCounterMap();
         if (retVal == true)
         {
             // init with default configuration
-            retVal = filter->InitToDefault();
+            retVal = m_pDisplayFilter->InitToDefault();
         }
         
 

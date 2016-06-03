@@ -107,6 +107,8 @@ public:
 
     CpuProfileModule* getModuleDetail(const QString& modulePath, QWidget* pParent = nullptr, ExecutableFile** ppExe = nullptr);
 
+    shared_ptr<DisplayFilter> GetDisplayFilter() { return m_pDisplayFilter; }
+
 public slots:
 
     /// New GUI:
@@ -189,6 +191,8 @@ private:
 
     /// Contain the list of file paths for the processes with CSS collection:
     QMap<ProcessIdType, QString> m_CSSCollectedProcessesFilePathsMap;
+
+    shared_ptr<DisplayFilter> m_pDisplayFilter  = nullptr ;
 
     //shared_ptr<AMDTProfileDataOptions>  m_pOptions;
 };

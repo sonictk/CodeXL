@@ -82,7 +82,6 @@ class CPUProfileDataTable : public acListCtrl
 
 public:
 
-
     enum TableContextMenuActionType
     {
         DISPLAY_FUNCTION_IN_FUNCTIONS_VIEW,
@@ -104,17 +103,19 @@ public:
         MODULES_DATA_TABLE
     };
 
-    CPUProfileDataTable(QWidget* pParent, const gtVector<TableContextMenuActionType>& additionalContextMenuActions, SessionTreeNodeData* pSessionData);
+    CPUProfileDataTable(QWidget* pParent, 
+                        const gtVector<TableContextMenuActionType>& additionalContextMenuActions, 
+                        SessionTreeNodeData* pSessionData);
+
     virtual ~CPUProfileDataTable();
 
     /// Add the requested items to context menu:
     void extendContextMenu(const gtVector<TableContextMenuActionType>& contextMenuActions);
 
-    /// Display the requested information from the profile reader, with the requested display filter
-    /// \param pProfileReader the profile reader
-    /// \param displayFilter the requested display data
-    /// \return true / false is succeeded or failed
+    // Display the requested information from the profile reader, with the requested display filter
     bool displayProfileData(CpuProfileReader* pProfileReader);
+
+    bool displayProfData(shared_ptr<cxlProfileDataReader> pProfDataReader, shared_ptr<DisplayFilter> diplayFilter);
 
     // 
     bool displaySummaryData(shared_ptr<cxlProfileDataReader> pProfDataReader,
@@ -195,6 +196,7 @@ protected:
     /// Fill the list data according to the requested item:
     virtual bool fillListData();
 
+	virtual bool fillTableData() { return true; }
     // TODO: will make it pure virtual
     // Fill the Summary Tables with the hottest 
     // five functions details 
@@ -213,6 +215,8 @@ protected:
 
     /// Sets the list control columns according to the current displayed item:
     bool initializeListHeaders();
+
+    bool initializeTableHeaders(shared_ptr<DisplayFilter> diplayFilter);
 
     /// \brief Name:        setModuleCellValue
     /// \brief Description: Sets the data for the requested module column index
@@ -261,7 +265,9 @@ protected:
     /// \param cluSampleColumnIndexList the indexes on which the CLU percentage columns is in
     /// \param hotSpotCaption the current hot spot caption
     /// \param isHotSpotCluPercent if hotSpotCaption is not empty, will contain true if the hot spot caption has percent content
-    void findCLUPercentColumn(QList<int>& cluSampleColumnIndexList, const QString& hotSpotCaption, bool& isHotSpotCluPercent);
+    void findCLUPercentColumn(QList<int>& cluSampleColumnIndexList, 
+                                const QString& hotSpotCaption, 
+                                bool& isHotSpotCluPercent);
 
     // updates the 6th row (of top 5 table - hotspot) items data, to the current table sort order
     void UpdateLastRowItemsSortOrder();
@@ -283,10 +289,11 @@ protected slots:
 
 protected:
 
-    TableDisplaySettings*               m_pTableDisplaySettings;        //Represents the currently displayed table filter
-    SessionDisplaySettings*             m_pSessionDisplaySettings;      //Represents the currently displayed session filter
-    CpuProfileReader*                   m_pProfileReader;               //A pointer to the session profile reader
-    shared_ptr<cxlProfileDataReader>    m_cpuProfDataReader;            //A pointer to database reader
+    TableDisplaySettings*               m_pTableDisplaySettings  = nullptr;        //Represents the currently displayed table filter
+    SessionDisplaySettings*             m_pSessionDisplaySettings = nullptr;      //Represents the currently displayed session filter
+    CpuProfileReader*                   m_pProfileReader = nullptr;               //A pointer to the session profile reader
+    shared_ptr<cxlProfileDataReader>    m_cpuProfDataReader = nullptr;            //A pointer to database reader
+    shared_ptr<DisplayFilter>           m_displaFilter = nullptr;
 
     // Summarize the total value of sample counts:
     double m_totalSampleCount;
@@ -301,13 +308,13 @@ protected:
     SessionTreeNodeData* m_pDisplaySessionData;
 
     /// Contain the object that is responsible for the delegate of the CLU percent items:
-    acTablePercentItemDelegate* m_pCLUDelegate;
+    acTablePercentItemDelegate* m_pCLUDelegate = nullptr;
 
     // saves the empty table message row item
-    QTableWidgetItem* m_pEmptyRowTableItem;
+    QTableWidgetItem* m_pEmptyRowTableItem = nullptr;
 
     // saves the other samples message row item
-    QTableWidgetItem* m_pOtherSamplesRowItem;
+    QTableWidgetItem* m_pOtherSamplesRowItem = nullptr;
 
     // saves the index of the percent columns
     QList<int> m_percentColsNum;

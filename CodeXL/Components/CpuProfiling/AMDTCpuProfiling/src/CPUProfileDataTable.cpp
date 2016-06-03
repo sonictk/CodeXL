@@ -38,6 +38,8 @@
 #include <inc/CPUProfileDataTableItem.h>
 #include <AMDTSharedProfiling/inc/StringConstants.h>
 
+using ContextMenuActionType = gtVector<CPUProfileDataTable::TableContextMenuActionType>;
+
 #define MAX_COLUMN_WIDTH 350
 
 // Static members:
@@ -46,14 +48,14 @@ bool CPUProfileDataTable::m_sIconsInitialized = false;
 bool CPUProfileDataTable::m_CLUNoteShown = true;
 
 
-CPUProfileDataTable::CPUProfileDataTable(QWidget* pParent, const gtVector<CPUProfileDataTable::TableContextMenuActionType>& additionalContextMenuActions, SessionTreeNodeData* pSessionData)
-    : acListCtrl(pParent, CP_CPU_TABLE_ROW_HEIGHT), m_pTableDisplaySettings(nullptr), m_pSessionDisplaySettings(nullptr),
-      m_pProfileReader(nullptr), m_cpuProfDataReader(nullptr), m_pDisplaySessionData(pSessionData), m_pCLUDelegate(nullptr), m_pEmptyRowTableItem(nullptr),
-      m_pOtherSamplesRowItem(nullptr)
+CPUProfileDataTable::CPUProfileDataTable(QWidget* pParent, 
+                                         const ContextMenuActionType& additionalContextMenuActions,
+                                         SessionTreeNodeData* pSessionData)
+                     : acListCtrl(pParent, CP_CPU_TABLE_ROW_HEIGHT), 
+                       m_pDisplaySessionData(pSessionData)
 {
     setSortingEnabled(true);
     setEnablePaste(false);
-    m_totalSampleCount = 0;
 
     // Copy cell items with captions:
     m_shouldCopyColumnHeaders = true;
@@ -62,15 +64,20 @@ CPUProfileDataTable::CPUProfileDataTable(QWidget* pParent, const gtVector<CPUPro
     extendContextMenu(additionalContextMenuActions);
 
     // Connect the sort click slot:
-    bool rc = connect(horizontalHeader(), SIGNAL(sortIndicatorChanged(int, Qt::SortOrder)), this, SLOT(sortIndicatorChanged(int, Qt::SortOrder)));
+    bool rc = connect(horizontalHeader(), 
+                        SIGNAL(sortIndicatorChanged(int, Qt::SortOrder)), 
+                        this, 
+                        SLOT(sortIndicatorChanged(int, Qt::SortOrder)));
 
     m_tableRowHasIcon = false;
 
+#if 0
     for (int i = 0; i < CPU_TABLE_MAX_VALUES; i++)
     {
         m_elapsedTime[i] = 0;
         m_startTime[i] = 0;
     }
+#endif
 
     GT_ASSERT(rc);
 }
@@ -82,6 +89,7 @@ CPUProfileDataTable::~CPUProfileDataTable()
 
 bool CPUProfileDataTable::fillListData()
 {
+#if 0
     // Get the item for the empty table message:
     int newRowIndex = rowCount();
 
@@ -144,6 +152,7 @@ bool CPUProfileDataTable::fillListData()
         // save item
         setRowHidden(newRowIndex, true);
     }
+#endif
 
     return true;
 }
@@ -174,10 +183,40 @@ bool CPUProfileDataTable::displaySummaryData(shared_ptr<cxlProfileDataReader> pP
     return true;
 }
 
-bool CPUProfileDataTable::displayProfileData(CpuProfileReader* pProfileReader)
+bool CPUProfileDataTable::displayProfData(shared_ptr<cxlProfileDataReader> pProfDataReader,
+                                            shared_ptr<DisplayFilter> diplayFilter)
 {
     bool retVal = false;
+    GT_IF_WITH_ASSERT(nullptr != pProfDataReader)
+    {
+        m_cpuProfDataReader = pProfDataReader;
+        m_displaFilter = diplayFilter;
 
+        clear();
+        clearContents();
+        setColumnCount(0);
+        setRowCount(0);
+
+        if (horizontalHeader()->count() == 0)
+        {
+            bool rcHeaders = initializeTableHeaders(diplayFilter);
+            GT_ASSERT(rcHeaders);
+        }
+
+		fillTableData();
+
+        retVal = true;
+
+    }
+
+    return retVal;
+}
+
+bool CPUProfileDataTable::displayProfileData(CpuProfileReader* pProfileReader)
+{
+    bool retVal = true;
+    pProfileReader = pProfileReader;
+#if 1
     BEGIN_TICK_COUNT(DisplayProfileData);
 
     GT_IF_WITH_ASSERT(pProfileReader != nullptr)
@@ -234,7 +273,7 @@ bool CPUProfileDataTable::displayProfileData(CpuProfileReader* pProfileReader)
 #if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
     OS_OUTPUT_FORMAT_DEBUG_LOG(OS_DEBUG_LOG_DEBUG, L"Elapsed Time: displayProfileData (%u ms)", m_elapsedTime[DisplayProfileData]);
 #endif
-
+#endif
     return retVal;
 }
 
@@ -242,6 +281,100 @@ QTableWidgetItem* CPUProfileDataTable::allocateNewWidgetItem(const QString& text
 {
     // Allocate my own widget item:
     return new CPUProfileDataTableItem(text);
+}
+
+bool CPUProfileDataTable::initializeTableHeaders(shared_ptr<DisplayFilter> diplayFilter)
+{
+    bool retVal = true;
+
+    // Sanity check:
+	GT_IF_WITH_ASSERT((diplayFilter != nullptr) && (m_pTableDisplaySettings != nullptr))
+	{
+		// Vector that contain the columns strings according to the current displayed columns:
+		QStringList columnsStringByObjectType;
+		QStringList columnTooltipsByObjectType;
+
+		int tableDispSettingsColsNum = (int)m_pTableDisplaySettings->m_displayedColumns.size();
+
+		for (int i = 0; i < tableDispSettingsColsNum; i++)
+		{
+			QString colStr, colTooltip;
+
+			bool rc = m_pTableDisplaySettings->colTypeAsString(m_pTableDisplaySettings->m_displayedColumns[i],
+				colStr, colTooltip);
+			GT_ASSERT(rc);
+
+			columnsStringByObjectType << colStr;
+			columnTooltipsByObjectType << colTooltip;
+		}
+
+		std::vector<gtString> selectedCounterList;
+
+		diplayFilter->GetSelectedCounterList(selectedCounterList);
+
+		for (const auto& counter : selectedCounterList)
+		{
+			columnsStringByObjectType << counter.asASCIICharArray();
+		}
+
+		initHeaders(columnsStringByObjectType, false);
+	}
+#if 0
+        // Now add the data columns (only if this is not a hot spot display:
+
+        bool showPercentSeperateColumns = IsShowSeperatePercentColumns();
+
+        m_percentColsNum.clear();
+
+        if (m_pTableDisplaySettings->m_hotSpotIndicatorColumnCaption.isEmpty())
+        {
+            for (int i = 0; i < (int)m_pSessionDisplaySettings->m_displayedDataColumnsIndices.size(); i++)
+            {
+                int index = m_pSessionDisplaySettings->m_displayedDataColumnsIndices[i];
+                GT_IF_WITH_ASSERT((index >= 0) && (index < (int)m_pSessionDisplaySettings->m_availableDataColumnCaptions.size()))
+                {
+                    QString currentCaption = m_pSessionDisplaySettings->m_availableDataColumnCaptions[index];
+                    QString currentFullName = m_pSessionDisplaySettings->m_availableDataFullNames[index];
+                    QString currentDescription = m_pSessionDisplaySettings->m_availableDataColumnTooltips[index];
+
+                    // Format the tooltip:
+                    QString tooltip;
+                    acWrapAndBuildFormattedTooltip(currentFullName, currentDescription, tooltip);
+
+                    columnsStringByObjectType << currentCaption;
+                    columnTooltipsByObjectType << tooltip;
+
+                    if (showPercentSeperateColumns)
+                    {
+                        currentCaption.append(" percent");
+                        columnsStringByObjectType << currentCaption;
+                        columnTooltipsByObjectType << tooltip;
+                        m_percentColsNum.append(i * 2 + 1 + tableDispSettingsColsNum);
+                    }
+                }
+            }
+        }
+
+        // Build the columns according to the selected item type:
+        initHeaders(columnsStringByObjectType, false);
+
+        for (int i = 0, colsAmount = columnCount(); i < colsAmount; i++)
+        {
+            QTableWidgetItem* pHeaderItem = horizontalHeaderItem(i);
+            GT_IF_WITH_ASSERT((pHeaderItem != nullptr) && (i < columnTooltipsByObjectType.size()))
+            {
+                pHeaderItem->setToolTip(columnTooltipsByObjectType[i]);
+            }
+        }
+
+        for (int i = 0; i < m_percentColsNum.size() - 1; i++)
+        {
+            setColumnHidden(m_percentColsNum[i], true);
+        }
+    }
+#endif
+
+    return retVal;
 }
 
 bool CPUProfileDataTable::initializeListHeaders()
@@ -1234,7 +1367,8 @@ bool CPUProfileDataTable::HandleHotSpotIndicatorChange(AMDTUInt32 mid)
 
 bool CPUProfileDataTable::HandleHotSpotIndicatorSet()
 {
-    return displayProfileData(m_pProfileReader);
+    //return displayProfileData(m_pProfileReader);
+    return displayProfData(m_cpuProfDataReader, m_displaFilter);
 }
 
 bool CPUProfileDataTable::buildHotSpotIndicatorMap()

@@ -46,10 +46,7 @@
 #define CP_MODULES_VIEW_TABLE_MIN_HEIGHT 50
 
 SessionModulesView::SessionModulesView(QWidget* pParent, CpuSessionWindow* pSessionWindow)
-    : DataTab(pParent, pSessionWindow),
-      m_pTopProcessesTable(nullptr), m_pBottomProcessesTable(nullptr), m_pTopModulesTable(nullptr), m_pBottomModulesTable(nullptr),
-      m_pSplitterCentralWidget(nullptr), m_pComboBoxDisplayByAction(nullptr), m_pProcessWidget(nullptr), m_pModulesWidget(nullptr), m_pHintFrame(nullptr), m_isProcessesUp(true),
-      m_latestSelectedTable(TOTAL_TABLE_COUNT)
+    : DataTab(pParent, pSessionWindow)
 {
     m_pList = nullptr;
     setMouseTracking(true);
@@ -247,7 +244,6 @@ void SessionModulesView::setSessionWindowLayout()
         updateHint(CP_modulesInformationHintForCLU);
     }
 
-
     // Set the tables' display filter:
     m_pTopModulesTable->setTableDisplaySettings(&m_modulesTableFilter, CurrentSessionDisplaySettings());
     m_pBottomModulesTable->setTableDisplaySettings(&m_modulesTableFilter, CurrentSessionDisplaySettings());
@@ -281,8 +277,12 @@ bool SessionModulesView::displaySessionDataTables()
         pModulesTable->blockSignals(true);
         pProcessTable->blockSignals(true);
 
-        retVal = pModulesTable->displayProfileData(m_pProfileReader) && retVal;
-        retVal = pProcessTable->displayProfileData(m_pProfileReader) && retVal;
+
+        //retVal = pModulesTable->displayProfileData(m_pProfileReader) && retVal;
+        //retVal = pProcessTable->displayProfileData(m_pProfileReader) && retVal;
+
+        retVal = pModulesTable->displayProfData(m_pCpuProfDataReader, m_pDisplayFilter) && retVal;
+        retVal = pProcessTable->displayProfData(m_pCpuProfDataReader, m_pDisplayFilter) && retVal;
 
         pModulesTable->blockSignals(false);
         pProcessTable->blockSignals(false);
@@ -295,11 +295,13 @@ void SessionModulesView::initDisplayFilters()
 {
     // Set the display filter for the modules table:
     m_modulesTableFilter.m_hotSpotIndicatorColumnCaption = "";
+    m_modulesTableFilter.m_displayedColumns.push_back(TableDisplaySettings::MODULE_ID);
     m_modulesTableFilter.m_displayedColumns.push_back(TableDisplaySettings::MODULE_NAME_COL);
     m_modulesTableFilter.m_displayedColumns.push_back(TableDisplaySettings::MODULE_SYMBOLS_LOADED);
 
     // Set the display filter for the processes table:
     m_processesTableFilter.m_displayedColumns.clear();
+    m_processesTableFilter.m_displayedColumns.push_back(TableDisplaySettings::MODULE_ID);
     m_processesTableFilter.m_displayedColumns.push_back(TableDisplaySettings::PROCESS_NAME_COL);
     m_processesTableFilter.m_displayedColumns.push_back(TableDisplaySettings::PID_COL);
 
@@ -399,16 +401,22 @@ void SessionModulesView::onDisplayByChanged(int index)
 {
     (void)(index); // unused
     // Sanity check:
-    GT_IF_WITH_ASSERT((m_pComboBoxDisplayByAction != nullptr) && (m_pTopProcessesTable != nullptr) && (m_pTopModulesTable != nullptr)
-                      && (m_pBottomProcessesTable != nullptr) && (m_pBottomModulesTable != nullptr) && (m_pTopLabelAction != nullptr) && (m_pTopToolbar != nullptr))
+    GT_IF_WITH_ASSERT((m_pComboBoxDisplayByAction != nullptr) && 
+					  (m_pTopProcessesTable != nullptr) && 
+					  (m_pTopModulesTable != nullptr) &&
+                      (m_pBottomProcessesTable != nullptr) && 
+					  (m_pBottomModulesTable != nullptr) && 
+					  (m_pTopLabelAction != nullptr) && 
+				      (m_pTopToolbar != nullptr))
     {
         const QComboBox* pComboBoxDisplayBy = TopToolbarComboBox(m_pComboBoxDisplayByAction);
+
         GT_IF_WITH_ASSERT(pComboBoxDisplayBy != nullptr)
         {
             m_isProcessesUp = (pComboBoxDisplayBy->itemText(index) == CP_strProcesses);
         }
 
-        GT_ASSERT_EX(false, L"Fix the following commented lines (compatibility issues in with Qt 5.2).");
+        //GT_ASSERT_EX(false, L"Fix the following commented lines (compatibility issues in with Qt 5.2).");
         m_pBottomModulesTable->setVisible(m_isProcessesUp);
         m_pTopProcessesTable->setVisible(m_isProcessesUp);
 
@@ -431,10 +439,13 @@ void SessionModulesView::onDisplayByChanged(int index)
 
 void SessionModulesView::onProcessesTableCellChanged()
 {
-    SessionDisplaySettings* pSessionDisplaySettings = CurrentSessionDisplaySettings();
-    GT_IF_WITH_ASSERT((m_pTopProcessesTable != nullptr) && (m_pBottomModulesTable != nullptr) &&
-                      (m_pBottomLabel != nullptr) && (pSessionDisplaySettings != nullptr))
+    //SessionDisplaySettings* pSessionDisplaySettings = CurrentSessionDisplaySettings();
+
+    GT_IF_WITH_ASSERT((m_pTopProcessesTable != nullptr) && 
+				      (m_pBottomModulesTable != nullptr) &&
+                      (m_pBottomLabel != nullptr))
     {
+#if 0
         m_modulesTableFilter.m_filterByPIDsList.clear();
 
         // Add all current selected items to the filters modules list:
@@ -461,9 +472,13 @@ void SessionModulesView::onProcessesTableCellChanged()
                 UpdateNoteWindowContent(cluData);
             }
         }
+#endif
 
         // Display the modules table with the updated filter:
-        bool rc = m_pBottomModulesTable->displayProfileData(m_pProfileReader);
+        //bool rc = m_pBottomModulesTable->displayProfileData(m_pProfileReader);
+		bool rc = m_pTopProcessesTable->displayProfData(m_pCpuProfDataReader, m_pDisplayFilter);
+		GT_ASSERT(rc);
+		rc = m_pBottomModulesTable->displayProfData(m_pCpuProfDataReader, m_pDisplayFilter);
         GT_ASSERT(rc);
 
         // Set the bottom label:
@@ -473,10 +488,13 @@ void SessionModulesView::onProcessesTableCellChanged()
 
 void SessionModulesView::onModulesTableCellChanged()
 {
-    SessionDisplaySettings* pSessionDisplaySettings = CurrentSessionDisplaySettings();
-    GT_IF_WITH_ASSERT((m_pTopModulesTable != nullptr) && (m_pBottomProcessesTable != nullptr)
-                      && (m_pBottomLabel != nullptr) && (pSessionDisplaySettings != nullptr))
+
+    //SessionDisplaySettings* pSessionDisplaySettings = CurrentSessionDisplaySettings();
+    GT_IF_WITH_ASSERT((m_pTopModulesTable != nullptr) && 
+						(m_pBottomProcessesTable != nullptr) &&
+						(m_pBottomLabel != nullptr))
     {
+#if 0
         // Set the module file name as filter to the processes table:
         m_processesTableFilter.m_filterByModulePathsList.clear();
 
@@ -504,9 +522,13 @@ void SessionModulesView::onModulesTableCellChanged()
                 UpdateNoteWindowContent(cluData);
             }
         }
+#endif
 
         // Display the modules table with the updated filter:
-        bool rc = m_pBottomProcessesTable->displayProfileData(m_pProfileReader);
+        //bool rc = m_pBottomProcessesTable->displayProfileData(m_pProfileReader);
+		bool rc = m_pTopModulesTable->displayProfData(m_pCpuProfDataReader, m_pDisplayFilter);
+		GT_ASSERT(rc);
+		rc = m_pBottomProcessesTable->displayProfData(m_pCpuProfDataReader, m_pDisplayFilter);
         GT_ASSERT(rc);
 
         // Set the bottom label:
@@ -731,7 +753,9 @@ void SessionModulesView::UpdateTableDisplay(unsigned int updateType)
         if (m_isProcessesUp)
         {
             // Display the modules table with the updated filter:
-            bool rc = m_pTopProcessesTable->displayProfileData(m_pProfileReader);
+            //bool rc = m_pTopProcessesTable->displayProfileData(m_pProfileReader);
+            bool rc = m_pTopProcessesTable->displayProfData(m_pCpuProfDataReader, m_pDisplayFilter);
+
             GT_ASSERT(rc);
 
             onProcessesTableCellChanged();
@@ -739,7 +763,8 @@ void SessionModulesView::UpdateTableDisplay(unsigned int updateType)
         else
         {
             // Display the modules table with the updated filter:
-            bool rc = m_pTopModulesTable->displayProfileData(m_pProfileReader);
+            //bool rc = m_pTopModulesTable->displayProfileData(m_pProfileReader);
+            bool rc = m_pTopModulesTable->displayProfData(m_pCpuProfDataReader, m_pDisplayFilter);
             GT_ASSERT(rc);
 
             onModulesTableCellChanged();

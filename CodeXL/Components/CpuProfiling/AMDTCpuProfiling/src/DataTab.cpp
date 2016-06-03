@@ -66,6 +66,7 @@ DataTab::DataTab(QWidget* pParent, CpuSessionWindow* pParentSessionWindow, const
         m_pProfileReader        = &pParentSessionWindow->profileReader();
         m_pCpuProfDataReader    = pParentSessionWindow->profDbReader();
         m_pProfileInfo          = m_pProfileReader->getProfileInfo();
+        m_pDisplayFilter        = pParentSessionWindow->GetDisplayFilter();
     }
 
     IntializeCLUNoteString();
@@ -475,6 +476,12 @@ void DataTab::OnDisplaySettingsClicked()
 
     if (QDialog::Accepted == DisplayFilterDlg::instance().displayDialog(profileString, m_enableOnlySystemDllInDisplaySettings))
     {
+		// Update the display and the views' filters:
+		ProtectedUpdateTableDisplay(UPDATE_TABLE_COLUMNS_DATA);
+
+		// Update the displayed string:
+		updateDisplaySettingsString();
+
 #if 0
         // Get the edited settings and the current session settings:
         const SessionDisplaySettings& changedSettings = DisplayFilterDlg::instance().SessionSettings();

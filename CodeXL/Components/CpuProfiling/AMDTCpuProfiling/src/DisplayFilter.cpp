@@ -416,6 +416,11 @@ bool TableDisplaySettings::colTypeAsString(ProfileDataColumnType column, QString
             tooltip = CP_colCaptionSourceFileTooltip;
             break;
 
+        case MODULE_ID:
+            colStr = CP_colCaptionModuleId;
+            tooltip = CP_colCaptionModuleIdTooltip;
+            break;
+
         default:
             GT_ASSERT_EX(false, L"Unsupported column type");
             retVal = false;
@@ -1084,6 +1089,7 @@ SetReportConfig()
 
     if (nullptr != m_pProfDataReader.get())
     {
+        SetProfileDataOption();
         m_pProfDataReader->SetReportOption(m_options);
         ret = true;
     }
@@ -1097,14 +1103,16 @@ DisplayFilter::GetReportConfig() const
     return m_reportConfigs;
 }
 
+/*
 bool  DisplayFilter::
 SetCounterPerColCheckBox(QString checkBoxName)
 {
     (void)checkBoxName;
     return true;
-}
+}*/
 
 
+/*
 DisplayFilter* DisplayFilter::m_instance = nullptr;
 
 DisplayFilter*
@@ -1113,12 +1121,11 @@ DisplayFilter::GetInstance()
     if (nullptr == m_instance)
     {
         m_instance = new DisplayFilter();
-
     }
 
     return m_instance;
 
-}
+}*/
 
 bool
 DisplayFilter::InitToDefault()
@@ -1146,6 +1153,11 @@ DisplayFilter::InitToDefault()
     }
 
     return retVal;
+}
+
+void DisplayFilter::GetSupportedCountersList(std::vector<gtString>& counterList)
+{
+	counterList = m_selectedCountersIdList;
 }
 
 int DisplayFilter::GetCpuCoreCnt() const
@@ -1191,4 +1203,18 @@ gtString DisplayFilter::GetCounterName(AMDTUInt64 counterId) const
     }
 
     return counterName;
+}
+
+void DisplayFilter::SetProfileDataOption()
+{
+    m_options.m_counters.clear();
+
+    for (auto const& selCounter : m_selectedCountersIdList)
+    {
+        auto foundCountId = m_counterNameIdMap.find(selCounter);
+        if (m_counterNameIdMap.end() != foundCountId)
+        {
+            m_options.m_counters.push_back(foundCountId->second);
+        }
+    }
 }
