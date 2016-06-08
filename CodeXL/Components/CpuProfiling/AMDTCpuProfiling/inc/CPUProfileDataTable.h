@@ -296,22 +296,22 @@ protected:
     shared_ptr<DisplayFilter>           m_displaFilter = nullptr;
 
     // Summarize the total value of sample counts:
-    double m_totalSampleCount;
-    HotSpotValuesMap m_hotSpotCellsMap;
-    gtVector<float>       m_totalDataValuesVector;
+    double				m_totalSampleCount;
+    HotSpotValuesMap	m_hotSpotCellsMap;
+    gtVector<float>     m_totalDataValuesVector;
 
     // Icons:
-    static gtPtrVector<QPixmap*> m_sTableIcons;
-    static bool m_sIconsInitialized;
+    static gtPtrVector<QPixmap*>	m_sTableIcons;
+    static bool						m_sIconsInitialized;
 
     /// Contain the tree item data for the currently displayed session:
-    SessionTreeNodeData* m_pDisplaySessionData;
+    SessionTreeNodeData*			m_pDisplaySessionData;
 
     /// Contain the object that is responsible for the delegate of the CLU percent items:
-    acTablePercentItemDelegate* m_pCLUDelegate = nullptr;
+    acTablePercentItemDelegate*	m_pCLUDelegate	= nullptr;
 
     // saves the empty table message row item
-    QTableWidgetItem* m_pEmptyRowTableItem = nullptr;
+    QTableWidgetItem*	m_pEmptyRowTableItem		= nullptr;
 
     // saves the other samples message row item
     QTableWidgetItem* m_pOtherSamplesRowItem = nullptr;

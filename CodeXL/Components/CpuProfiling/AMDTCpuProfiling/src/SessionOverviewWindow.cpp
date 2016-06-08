@@ -57,13 +57,12 @@
 #endif
 
 SessionOverviewWindow::SessionOverviewWindow(QWidget* pParent, CpuSessionWindow* pSessionWindow)
-    : DataTab(pParent, pSessionWindow),
-      m_pProcessesTable(nullptr), m_pModulesTable(nullptr), m_pFunctionsTable(nullptr), m_pSplitterCentralWidget(nullptr),
-      m_pPropertiewView(nullptr), m_pHotSpotIndicatorComboBoxAction(nullptr)
+											: DataTab(pParent, pSessionWindow)
 {
     m_pList = nullptr;
     setMouseTracking(true);
 
+#if 0
     GT_IF_WITH_ASSERT(m_pProfileReader != nullptr)
     {
 
@@ -80,11 +79,12 @@ SessionOverviewWindow::SessionOverviewWindow(QWidget* pParent, CpuSessionWindow*
     }
 
     // Only display system dll's in filter:
-    setEnableOnlySystemDllInfilterDlg(true);
 
     // Set the display filter for the display filter dialog:
     m_pDisplaySettings = &m_functionsTablesFilter;
 
+#endif
+	setEnableOnlySystemDllInfilterDlg(true);
 }
 
 SessionOverviewWindow::~SessionOverviewWindow()
@@ -167,10 +167,16 @@ void SessionOverviewWindow::setSessionWindowLayout()
     m_pProcessesTable = new ProcessesDataTable(nullptr, actions, pSessionData);
 
     m_pProcessesTable->setMouseTracking(true);
-    bool rc = connect(m_pProcessesTable, SIGNAL(itemActivated(QTableWidgetItem*)), this, SLOT(onTableItemActivated(QTableWidgetItem*)));
+    bool rc = connect(m_pProcessesTable, 
+						SIGNAL(itemActivated(QTableWidgetItem*)), 
+						this, 
+						SLOT(onTableItemActivated(QTableWidgetItem*)));
     GT_ASSERT(rc);
 
-    rc = connect(m_pProcessesTable, SIGNAL(contextMenuActionTriggered(CPUProfileDataTable::TableContextMenuActionType, QTableWidgetItem*)), this, SLOT(onTableContextMenuActionTriggered(CPUProfileDataTable::TableContextMenuActionType, QTableWidgetItem*)));
+    rc = connect(m_pProcessesTable, 
+					SIGNAL(contextMenuActionTriggered(CPUProfileDataTable::TableContextMenuActionType, QTableWidgetItem*)), 
+					this, 
+					SLOT(onTableContextMenuActionTriggered(CPUProfileDataTable::TableContextMenuActionType, QTableWidgetItem*)));
     GT_ASSERT(rc);
 
     actions.clear();
@@ -201,20 +207,24 @@ void SessionOverviewWindow::setSessionWindowLayout()
     // If a file cannot be found, popup the user:
     m_pFunctionsTable->setPopupToBrowseMissingFiles(false);
 
-    rc = connect(m_pFunctionsTable, SIGNAL(itemActivated(QTableWidgetItem*)), this, SLOT(onTableItemActivated(QTableWidgetItem*)));
+    rc = connect(m_pFunctionsTable, 
+				SIGNAL(itemActivated(QTableWidgetItem*)), 
+				this, 
+				SLOT(onTableItemActivated(QTableWidgetItem*)));
     GT_ASSERT(rc);
 
-    rc = connect(m_pFunctionsTable, SIGNAL(contextMenuActionTriggered(CPUProfileDataTable::TableContextMenuActionType, QTableWidgetItem*)), this, SLOT(onTableContextMenuActionTriggered(CPUProfileDataTable::TableContextMenuActionType, QTableWidgetItem*)));
+    rc = connect(m_pFunctionsTable, 
+					SIGNAL(contextMenuActionTriggered(CPUProfileDataTable::TableContextMenuActionType, QTableWidgetItem*)), 
+					this, 
+					SLOT(onTableContextMenuActionTriggered(CPUProfileDataTable::TableContextMenuActionType, QTableWidgetItem*)));
     GT_ASSERT(rc);
 
     m_pPropertiewView = new acQHTMLWindow(nullptr);
-
 
     // Create an hint label:
     QFrame* pFrame = createHintLabelFrame();
 
     m_pTopToolbar = new acToolBar(nullptr);
-
 
     // Do not allow the toolbar to float:
     m_pTopToolbar->setFloatable(false);
@@ -772,9 +782,13 @@ bool SessionOverviewWindow::fillHotspotIndicatorCombo()
 
 void SessionOverviewWindow::onHotSpotComboChanged(const QString& text)
 {
-    GT_IF_WITH_ASSERT((m_pFunctionsTable != nullptr) && (m_pModulesTable != nullptr) && (m_pProcessesTable != nullptr))
+    GT_IF_WITH_ASSERT((m_pFunctionsTable != nullptr) && 
+						(m_pModulesTable != nullptr) && 
+						(m_pProcessesTable != nullptr))
     {
-        GT_IF_WITH_ASSERT((m_pFunctionsTable->tableDisplaySettings() != nullptr) && (m_pModulesTable->tableDisplaySettings() != nullptr) && (m_pProcessesTable->tableDisplaySettings() != nullptr))
+        GT_IF_WITH_ASSERT((m_pFunctionsTable->tableDisplaySettings() != nullptr) && 
+						  (m_pModulesTable->tableDisplaySettings() != nullptr) && 
+						  (m_pProcessesTable->tableDisplaySettings() != nullptr))
         {
             Qt::SortOrder defaultSortOrder = Qt::DescendingOrder;
 
@@ -814,9 +828,15 @@ void SessionOverviewWindow::onHotSpotComboChange(const QString& text)
 void SessionOverviewWindow::onAfterHotSpotComboChanged(const QString& text)
 {
     SessionDisplaySettings* pSessionDisplaySettings = CurrentSessionDisplaySettings();
+
     QStringList availableFilters = m_hotspotSessionSettings.getListOfViews(m_pProfileInfo->m_eventVec.size());
-    GT_IF_WITH_ASSERT((!availableFilters.isEmpty()) && (m_pDisplayedSessionItemData != nullptr) && (pSessionDisplaySettings != nullptr)
-                      && (m_pFunctionsTable != nullptr) && (m_pModulesTable != nullptr) && (m_pProcessesTable != nullptr))
+
+    GT_IF_WITH_ASSERT((!availableFilters.isEmpty()) && 
+						(m_pDisplayedSessionItemData != nullptr) && 
+						(pSessionDisplaySettings != nullptr) &&
+						(m_pFunctionsTable != nullptr) && 
+						(m_pModulesTable != nullptr) && 
+						(m_pProcessesTable != nullptr))
     {
         // Find the profile type:
         QString filterName = availableFilters[0];

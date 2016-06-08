@@ -143,7 +143,6 @@ void SessionFunctionView::setSessionWindowLayout()
 
     QVBoxLayout* pMainLayout = new QVBoxLayout;
 
-
     QLabel* pHeaderLabel = new QLabel(CP_overviewPageHotspotIndicatorHeader);
 
 

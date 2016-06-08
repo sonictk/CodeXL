@@ -157,7 +157,7 @@ DisplayFilterDlg::displayDialog(const QString& sessionPath, bool enableOnlySyste
     }
 
     m_pCheckBoxDisplaySystemDLLs->setEnabled(true);
-    //disableAllControlsExceptSystemDll(m_enableOnlySystemDll);
+    disableAllControlsExceptSystemDll(m_enableOnlySystemDll);
 
     // Display the dialog:
     int rc = exec();

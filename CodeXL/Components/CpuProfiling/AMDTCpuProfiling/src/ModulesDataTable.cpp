@@ -463,6 +463,7 @@ void ModulesDataTable::onAboutToShowContextMenu()
     // Call the base class implementation:
     CPUProfileDataTable::onAboutToShowContextMenu();
 
+#if 0
     GT_IF_WITH_ASSERT((m_pContextMenu != nullptr) && (m_pTableDisplaySettings != nullptr))
     {
         foreach (QAction* pAction, m_pContextMenu->actions())
@@ -533,6 +534,8 @@ void ModulesDataTable::onAboutToShowContextMenu()
             }
         }
     }
+#endif
+
 }
 
 bool ModulesDataTable::AreModuleSymbolsLoaded(int moduleRowIndex)

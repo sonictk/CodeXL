@@ -168,6 +168,9 @@ bool FunctionsDataTable::FillTableSummaryData(AMDTUInt32 mid)
 
             addRow(list, nullptr);
 
+			// save item of this row
+			m_pEmptyRowTableItem = item(row, 0);
+
             QString modulePath(procInfo.at(0).m_path.asASCIICharArray());
 
             rc = setToolTip(row, sampleCountPercent.toString(), modulePath);
@@ -584,6 +587,7 @@ const FunctionsDataTable::FunctionData* FunctionsDataTable::getFunctionData(int 
 
     GT_IF_WITH_ASSERT((rowIndex >= 0) && (rowIndex < rowCount()))
     {
+#if 0
         QTableWidgetItem* pNameTableItem = item(rowIndex, m_functionNameColIndex);
 
         GT_IF_WITH_ASSERT(nullptr != pNameTableItem)
@@ -600,6 +604,7 @@ const FunctionsDataTable::FunctionData* FunctionsDataTable::getFunctionData(int 
                 }
             }
         }
+#endif
     }
 
     return pFuncData;
@@ -903,6 +908,7 @@ void FunctionsDataTable::onAboutToShowContextMenu()
     // Call the base class implementation:
     CPUProfileDataTable::onAboutToShowContextMenu();
 
+#if 1
     GT_IF_WITH_ASSERT((m_pContextMenu != nullptr) && (m_pTableDisplaySettings != nullptr) && (m_pParentSessionWindow != nullptr))
     {
         foreach (QAction* pAction, m_pContextMenu->actions())
@@ -921,9 +927,8 @@ void FunctionsDataTable::onAboutToShowContextMenu()
                         QTableWidgetItem* pItem = selectedItems().first();
 
                         // if its empty or is the "empty row" string item
-                        if (nullptr == pItem ||
-                            pItem->row() == m_pEmptyRowTableItem->row() ||
-                            pItem->row() == m_pOtherSamplesRowItem->row())
+                        if ((nullptr == pItem) ||
+                            (pItem->row() == -1)) 
                         {
                             isActionEnabled = false;
                         }
@@ -940,8 +945,9 @@ void FunctionsDataTable::onAboutToShowContextMenu()
                             // Only enable display in call graph view, if the process css data is collected:
                             isActionEnabled = false;
 
-                            int rowIndex = pItem->row();
-
+#if 0
+							int rowIndex = pItem->row();
+							GT_ASSERT(rowIndex);
                             // get list of process Ids  for this function item
                             const QList<ProcessIdType>* pSelectedPidList;
                             pSelectedPidList = getFunctionPidList(rowIndex);
@@ -963,6 +969,7 @@ void FunctionsDataTable::onAboutToShowContextMenu()
                                     }
                                 }
                             }
+#endif
                         }
                     }
                     else
@@ -977,6 +984,7 @@ void FunctionsDataTable::onAboutToShowContextMenu()
             }
         }
     }
+#endif
 }
 
 CPUProfileDataTable::TableType FunctionsDataTable::GetTableType() const

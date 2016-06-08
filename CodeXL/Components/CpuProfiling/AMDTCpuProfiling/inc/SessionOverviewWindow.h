@@ -144,13 +144,14 @@ private:
 private:
 
     // Widgets:
-    ProcessesDataTable* m_pProcessesTable;
-    ModulesDataTable* m_pModulesTable;
-    FunctionsDataTable* m_pFunctionsTable;
-    QSplitter* m_pSplitterCentralWidget;
-    acQHTMLWindow* m_pPropertiewView;
-    QLabel* m_pProcessesHeader;
-    acWidgetAction* m_pHotSpotIndicatorComboBoxAction;
+    ProcessesDataTable* m_pProcessesTable				= nullptr;
+    ModulesDataTable* m_pModulesTable					= nullptr;
+    FunctionsDataTable* m_pFunctionsTable				= nullptr;
+
+    QSplitter* m_pSplitterCentralWidget					= nullptr;
+    acQHTMLWindow* m_pPropertiewView					= nullptr;
+    QLabel* m_pProcessesHeader							= nullptr;
+    acWidgetAction* m_pHotSpotIndicatorComboBoxAction = nullptr;
 
     // Display filters for the tables:
     TableDisplaySettings m_processesTablesFilter;
