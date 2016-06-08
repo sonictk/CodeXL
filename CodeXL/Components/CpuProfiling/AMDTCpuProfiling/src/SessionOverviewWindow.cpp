@@ -80,7 +80,7 @@ SessionOverviewWindow::SessionOverviewWindow(QWidget* pParent, CpuSessionWindow*
     }
 
     // Only display system dll's in filter:
-    setEnableOnlySystemDllInfilterDlg(true);
+    // setEnableOnlySystemDllInfilterDlg(true);
 
     // Set the display filter for the display filter dialog:
     m_pDisplaySettings = &m_functionsTablesFilter;

@@ -474,6 +474,7 @@ void DataTab::OnDisplaySettingsClicked()
 
     if (QDialog::Accepted == DisplayFilterDlg::instance().displayDialog(profileString, m_enableOnlySystemDllInDisplaySettings))
     {
+#if 0
         // Get the edited settings and the current session settings:
         const SessionDisplaySettings& changedSettings = DisplayFilterDlg::instance().SessionSettings();
         SessionDisplaySettings* pSessionSettings = m_pParentSessionWindow->sessionDisplaySettings();
@@ -533,6 +534,7 @@ void DataTab::OnDisplaySettingsClicked()
                 m_pParentSessionWindow->UpdateDisplaySettings(true, settingsChangeType);
             }
         }
+#endif
     }
 }
 

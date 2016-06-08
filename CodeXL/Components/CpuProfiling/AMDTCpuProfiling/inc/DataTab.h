@@ -252,6 +252,8 @@ protected:
     acToolBar* m_pTopToolbar;
     CpuSessionWindow* m_pParentSessionWindow;
     SessionDisplaySettings* m_pSessionDisplaySettings;
+	shared_ptr<DisplayFilter>  m_pDisplayFilter = nullptr ;
+
     bool m_enableOnlySystemDllInDisplaySettings;
 
     /// This flag keeps the type of change needs to be performed once the view is displayed.

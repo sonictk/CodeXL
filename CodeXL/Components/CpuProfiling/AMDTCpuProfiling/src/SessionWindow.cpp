@@ -34,6 +34,7 @@
 
 // AMDTSharedProfiling:
 #include <AMDTSharedProfiling/inc/ProfileApplicationTreeHandler.h>
+#include <AMDTCpuProfilingDataAccess/inc/AMDTCpuProfilingDataAccess.h>
 
 //Local:
 #include <inc/AmdtCpuProfiling.h>
@@ -144,6 +145,17 @@ bool CpuSessionWindow::display()
     bool retVal = false;
     GT_IF_WITH_ASSERT((nullptr != m_pTabWidget) && (nullptr != m_pSessionTreeItemData))
     {
+		// Open the database file
+		OpenDataReader();
+
+		m_pDisplayFilter.reset(new DisplayFilter);
+		m_pDisplayFilter->SetProfDataReader(m_pProfDataRd);
+		retVal = m_pDisplayFilter->CreateConfigCounterMap();
+		if (retVal == true)
+		{
+			// init with default configuration
+			retVal = m_pDisplayFilter->InitToDefault();
+		}
         m_sessionFile = m_pSessionTreeItemData->m_filePath;
 
         // Close the profile reader before opening it:
@@ -1316,4 +1328,47 @@ void CpuSessionWindow::BuildCSSProcessesList()
             }
         }
     }
+}
+
+bool CpuSessionWindow::OpenDataReader()
+{
+	bool result = false;
+	GT_IF_WITH_ASSERT((nullptr != m_pTabWidget) && (nullptr != m_pSessionTreeItemData))
+	{
+		// TODO:  to get the file path 
+		m_sessionFile = m_pSessionTreeItemData->m_filePath;
+
+		// get Session directory Path
+		gtString fileDir = m_sessionFile.fileDirectoryAsString();
+
+		// set directory path for Db file
+		osFilePath dbFilePath;
+		dbFilePath.setFileDirectory(fileDir);
+
+		// set file path 
+		gtString fileName;
+		result = m_sessionFile.getFileName(fileName);
+		if (result)
+		{
+			dbFilePath.setFileName(fileName);
+			dbFilePath.setFileExtension(L"cxldb");
+		}
+
+		// validate if file exists
+		if (!dbFilePath.isEmpty())
+		{
+			shared_ptr<cxlProfileDataReader> reader(new cxlProfileDataReader);
+			result = reader->OpenProfileData(dbFilePath.asString());
+			if (true == result)
+			{
+				m_pProfDataRd = reader;
+				// TODO: debug code need to be removed
+				AMDTProfileSessionInfo sessionInfo;
+
+				result = m_pProfDataRd->GetProfileSessionInfo(sessionInfo);
+			}
+		}
+	}
+	return result;
+
 }
