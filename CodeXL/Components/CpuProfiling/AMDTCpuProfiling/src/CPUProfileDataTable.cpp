@@ -147,6 +147,32 @@ bool CPUProfileDataTable::fillListData()
     return true;
 }
 
+bool CPUProfileDataTable::displayTableSummaryData(shared_ptr<cxlProfileDataReader> pProfDataRdr)
+{
+	bool retVal = false;
+	if (nullptr != pProfDataRdr)
+	{
+		m_pProfDataRdr = pProfDataRdr;
+
+		// Clear table items:
+		clear();
+		clearContents();
+		setColumnCount(0);
+		setRowCount(0);
+
+		if (horizontalHeader()->count() == 0)
+		{
+			initializeListHeaders();
+		}
+
+		fillSummaryTables();
+
+		retVal = true;
+
+	}
+	return true;
+}
+
 bool CPUProfileDataTable::displayProfileData(CpuProfileReader* pProfileReader)
 {
     bool retVal = false;
@@ -1729,4 +1755,22 @@ int CPUProfileDataTable::GetOtherSamplesItemRowNum() const
         retVal = m_pOtherSamplesRowItem->row();
     }
     return retVal;
+}
+
+bool CPUProfileDataTable::delegateSamplePercent(int colNum)
+{
+	bool retVal = false;
+
+	GT_IF_WITH_ASSERT((m_pProfDataRdr!= nullptr) &&
+		(m_pTableDisplaySettings != nullptr))
+	{
+		acTablePercentItemDelegate* pDelegate = new acTablePercentItemDelegate();
+
+		pDelegate->SetOwnerTable(this);
+		setItemDelegateForColumn(colNum, pDelegate);
+
+		retVal = true;
+	}
+
+	return retVal;
 }

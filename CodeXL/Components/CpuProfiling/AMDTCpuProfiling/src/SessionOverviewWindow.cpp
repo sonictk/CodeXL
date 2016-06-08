@@ -57,9 +57,7 @@
 #endif
 
 SessionOverviewWindow::SessionOverviewWindow(QWidget* pParent, CpuSessionWindow* pSessionWindow)
-    : DataTab(pParent, pSessionWindow),
-      m_pProcessesTable(nullptr), m_pModulesTable(nullptr), m_pFunctionsTable(nullptr), m_pSplitterCentralWidget(nullptr),
-      m_pPropertiewView(nullptr), m_pHotSpotIndicatorComboBoxAction(nullptr)
+    : DataTab(pParent, pSessionWindow)
 {
     m_pList = nullptr;
     setMouseTracking(true);
@@ -505,10 +503,17 @@ bool SessionOverviewWindow::displaySessionDataTables()
     bool retVal = false;
 
     // Sanity check:
-    GT_IF_WITH_ASSERT((m_pModulesTable != nullptr) && (m_pProcessesTable != nullptr) && (m_pFunctionsTable != nullptr) && (m_pProcessesHeader != nullptr))
+    GT_IF_WITH_ASSERT((m_pModulesTable != nullptr) && 
+					  (m_pProcessesTable != nullptr) && 
+					  (m_pFunctionsTable != nullptr) && 
+		              (m_pProcessesHeader != nullptr))
     {
         retVal = true;
 
+		bool rc = m_pProcessesTable->displayTableSummaryData(m_pProfDataRdr) && retVal;
+		GT_ASSERT(rc);
+
+#if 0
         // If there are multiple processes:
         if (m_isMultiProcesses)
         {
@@ -531,7 +536,9 @@ bool SessionOverviewWindow::displaySessionDataTables()
         rc = m_pFunctionsTable->displayProfileData(m_pProfileReader) && retVal;
         GT_ASSERT(rc);
         retVal = retVal && rc;
-    }
+#endif
+	}
+
 
     return retVal;
 }

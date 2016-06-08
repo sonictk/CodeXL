@@ -36,6 +36,58 @@ ProcessesDataTable::~ProcessesDataTable()
 
 }
 
+bool ProcessesDataTable::fillSummaryTables()
+{
+	bool retVal = false;
+
+	if (nullptr != m_pProfDataRdr)
+	{
+		AMDTProfileCounterDescVec counterDesc;
+		bool rc = m_pProfDataRdr->GetSampledCountersList(counterDesc);
+
+		AMDTProfileDataVec processProfileData;
+		rc = m_pProfDataRdr->GetProcessSummary(counterDesc.at(0).m_id, processProfileData);
+		GT_ASSERT(rc);
+
+		setSortingEnabled(false);
+
+		for (auto profData : processProfileData)
+		{
+			// get the process info 
+			AMDTProfileProcessInfoVec procInfo;
+			rc = m_pProfDataRdr->GetProcessInfo(profData.m_id, procInfo);
+
+			QStringList list;
+
+			if (profData.m_name != L"other")
+			{
+				list << procInfo.at(0).m_name.asASCIICharArray();
+				list << QString::number(procInfo.at(0).m_pid);
+			}
+			else
+			{
+				list << "other";
+				list << "";
+			}
+
+			QVariant sampleCount(profData.m_sampleValue.at(0).m_sampleCount);
+			list << sampleCount.toString();
+
+			QVariant sampleCountPercent(profData.m_sampleValue.at(0).m_sampleCountPercentage);
+			list << QString::number(profData.m_sampleValue.at(0).m_sampleCountPercentage, 'f', 2);
+
+			addRow(list, nullptr);
+
+			delegateSamplePercent(3);
+		}
+
+		setSortingEnabled(true);
+		
+		retVal = true;
+	}
+	return retVal;
+}
+
 bool ProcessesDataTable::fillListData()
 {
     bool retVal = false;

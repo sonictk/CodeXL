@@ -110,6 +110,8 @@ public:
     /// \return true / false is succeeded or failed
     bool displayProfileData(CpuProfileReader* pProfileReader);
 
+	bool displayTableSummaryData(shared_ptr<cxlProfileDataReader> pProfDataRdr);
+
     /// Sort the table according to the requested display filter:
     void sortTable();
 
@@ -180,6 +182,9 @@ protected:
 
     /// Fill the list data according to the requested item:
     virtual bool fillListData();
+
+	// Fill summary DataTables
+	virtual bool fillSummaryTables() = 0;
 
     /// Build the map of the current hot spot values. The function is virtual, since functions table for instance,
     /// needs to implement it in a more performance wise implementation
@@ -252,6 +257,7 @@ protected:
 
     /// checks the profiling mode and return true if Cache Line profiling
     bool IsCacheLineProfiling() const;
+	bool delegateSamplePercent(int colNum);
 
 protected slots:
 
@@ -305,6 +311,8 @@ protected:
 
     gtUInt32 m_elapsedTime[CPU_TABLE_MAX_VALUES];
     gtUInt32 m_startTime[CPU_TABLE_MAX_VALUES];
+
+	shared_ptr<cxlProfileDataReader> m_pProfDataRdr;
 };
 
 #endif //__CPUPROFILEDATATABLE_H

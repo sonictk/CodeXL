@@ -55,6 +55,8 @@ protected:
     /// Fill the list data according to the requested item:
     bool fillListData();
 
+	virtual bool fillSummaryTables() { return true; }
+
     /// Check if the module should be displayed or filtered:
     /// \pModule - the requested module
     /// \return true if the modules should be displayed, false otherwise

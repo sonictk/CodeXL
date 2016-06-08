@@ -81,6 +81,8 @@ protected:
     /// Fill the list data according to the requested item:
     bool fillListData();
 
+	virtual bool fillSummaryTables() { return true; }
+
     /// Build the map of the current hot spot values.
     /// The values are taken from m_functionsInfosVec in order to save the
     /// calculation of the whole table once changing the hot spot indicator
