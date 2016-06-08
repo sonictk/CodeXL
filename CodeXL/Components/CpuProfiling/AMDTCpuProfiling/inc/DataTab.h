@@ -278,6 +278,8 @@ protected:
     /// True iff we're in the update function (avoid multiple updates)
     bool m_isUpdatingData;
 	shared_ptr<cxlProfileDataReader> m_pProfDataRdr = nullptr;
+	std::map<gtString, AMDTUInt32>		m_CounterIdxMap;
+
 };
 
 #endif

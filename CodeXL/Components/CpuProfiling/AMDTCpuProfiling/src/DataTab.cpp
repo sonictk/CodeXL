@@ -66,6 +66,15 @@ DataTab::DataTab(QWidget* pParent, CpuSessionWindow* pParentSessionWindow, const
 		m_pProfDataRdr = pParentSessionWindow->profDbReader();
         m_pProfileReader = &pParentSessionWindow->profileReader();
         m_pProfileInfo = m_pProfileReader->getProfileInfo();
+
+		AMDTProfileCounterDescVec counterDesc;
+		m_pProfDataRdr->GetSampledCountersList(counterDesc);
+		int idx = 0;
+
+		for (const auto& counter : counterDesc)
+		{
+			m_CounterIdxMap.emplace(counter.m_name, idx++);
+		}
     }
 
     IntializeCLUNoteString();

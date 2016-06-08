@@ -331,6 +331,7 @@ private:
 	CounterNameIdMap                        m_counterNameIdMap;
 	CounterIdNameMap                        m_counterIdNameMap;
 	std::vector<gtString>                   m_selectedCountersIdList;
+
 };
 
 #endif //__DISPLAYFILTER_H

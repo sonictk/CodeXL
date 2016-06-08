@@ -159,6 +159,7 @@ private:
     // Does the current displayed session have multiple sessions:
     bool m_isMultiProcesses;
 
+	int m_counterIdx = 0;
 };
 
 #endif // __SessionOverviewWindow_H_

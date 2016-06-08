@@ -110,7 +110,7 @@ public:
     /// \return true / false is succeeded or failed
     bool displayProfileData(CpuProfileReader* pProfileReader);
 
-	bool displayTableSummaryData(shared_ptr<cxlProfileDataReader> pProfDataRdr);
+	bool displayTableSummaryData(shared_ptr<cxlProfileDataReader> pProfDataRdr, int counterIdx);
 
     /// Sort the table according to the requested display filter:
     void sortTable();
@@ -184,7 +184,7 @@ protected:
     virtual bool fillListData();
 
 	// Fill summary DataTables
-	virtual bool fillSummaryTables() = 0;
+	virtual bool fillSummaryTables(int counterIdx) = 0;
 
     /// Build the map of the current hot spot values. The function is virtual, since functions table for instance,
     /// needs to implement it in a more performance wise implementation

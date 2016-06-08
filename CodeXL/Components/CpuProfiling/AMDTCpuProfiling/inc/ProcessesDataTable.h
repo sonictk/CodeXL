@@ -40,7 +40,7 @@ protected:
 
     /// Fill the list data according to the requested item:
     bool fillListData();
-	virtual bool fillSummaryTables(); 
+	virtual bool fillSummaryTables(int counterIdx);
 
     /// Add a module item to the table:
     /// \param process - the process to add

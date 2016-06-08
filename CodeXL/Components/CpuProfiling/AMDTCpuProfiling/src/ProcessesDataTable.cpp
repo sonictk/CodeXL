@@ -36,7 +36,7 @@ ProcessesDataTable::~ProcessesDataTable()
 
 }
 
-bool ProcessesDataTable::fillSummaryTables()
+bool ProcessesDataTable::fillSummaryTables(int counterIdx)
 {
 	bool retVal = false;
 
@@ -46,7 +46,8 @@ bool ProcessesDataTable::fillSummaryTables()
 		bool rc = m_pProfDataRdr->GetSampledCountersList(counterDesc);
 
 		AMDTProfileDataVec processProfileData;
-		rc = m_pProfDataRdr->GetProcessSummary(counterDesc.at(0).m_id, processProfileData);
+		rc = m_pProfDataRdr->GetProcessSummary(counterDesc.at(counterIdx).m_id, 
+												processProfileData);
 		GT_ASSERT(rc);
 
 		setSortingEnabled(false);

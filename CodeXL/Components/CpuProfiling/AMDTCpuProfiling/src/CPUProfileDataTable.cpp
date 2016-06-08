@@ -147,7 +147,7 @@ bool CPUProfileDataTable::fillListData()
     return true;
 }
 
-bool CPUProfileDataTable::displayTableSummaryData(shared_ptr<cxlProfileDataReader> pProfDataRdr)
+bool CPUProfileDataTable::displayTableSummaryData(shared_ptr<cxlProfileDataReader> pProfDataRdr, int counterIdx)
 {
 	bool retVal = false;
 	if (nullptr != pProfDataRdr)
@@ -165,7 +165,7 @@ bool CPUProfileDataTable::displayTableSummaryData(shared_ptr<cxlProfileDataReade
 			initializeListHeaders();
 		}
 
-		fillSummaryTables();
+		fillSummaryTables(counterIdx);
 
 		retVal = true;
 

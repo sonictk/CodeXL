@@ -230,8 +230,8 @@ void SessionOverviewWindow::setSessionWindowLayout()
     pModulesHeader->setFont(boldFont);
 
     // Connect the hot spot combo to it's slot:
-    rc = connect(this, SIGNAL(hotspotIndicatorChanged(const QString&)), this, SLOT(onAfterHotSpotComboChanged(const QString&)));
-    GT_ASSERT(rc);
+    //rc = connect(this, SIGNAL(hotspotIndicatorChanged(const QString&)), this, SLOT(onAfterHotSpotComboChanged(const QString&)));
+    //GT_ASSERT(rc);
 
     int colSpan = m_isMultiProcesses ? 2 : 4;
     int modulesCol = m_isMultiProcesses ? 2 : 0;
@@ -304,7 +304,6 @@ void SessionOverviewWindow::setSessionWindowLayout()
     pBottomWidget->setMouseTracking(true);
 
     QVBoxLayout* pBottomLayout = new QVBoxLayout;
-
 
     pBottomLayout->addWidget(m_pPropertiewView);
     pBottomLayout->addWidget(pFrame);
@@ -510,7 +509,7 @@ bool SessionOverviewWindow::displaySessionDataTables()
     {
         retVal = true;
 
-		bool rc = m_pProcessesTable->displayTableSummaryData(m_pProfDataRdr) && retVal;
+		bool rc = m_pProcessesTable->displayTableSummaryData(m_pProfDataRdr, m_counterIdx) && retVal;
 		GT_ASSERT(rc);
 
 #if 0
@@ -708,10 +707,15 @@ bool SessionOverviewWindow::fillHotspotIndicatorCombo()
 
 void SessionOverviewWindow::onHotSpotComboChanged(const QString& text)
 {
-    GT_IF_WITH_ASSERT((m_pFunctionsTable != nullptr) && (m_pModulesTable != nullptr) && (m_pProcessesTable != nullptr))
+    GT_IF_WITH_ASSERT((m_pFunctionsTable != nullptr) && 
+						(m_pModulesTable != nullptr) && 
+						(m_pProcessesTable != nullptr))
     {
-        GT_IF_WITH_ASSERT((m_pFunctionsTable->tableDisplaySettings() != nullptr) && (m_pModulesTable->tableDisplaySettings() != nullptr) && (m_pProcessesTable->tableDisplaySettings() != nullptr))
+        GT_IF_WITH_ASSERT((m_pFunctionsTable->tableDisplaySettings() != nullptr) && 
+							(m_pModulesTable->tableDisplaySettings() != nullptr) && 
+							(m_pProcessesTable->tableDisplaySettings() != nullptr))
         {
+#if 0
             Qt::SortOrder defaultSortOrder = Qt::DescendingOrder;
 
             // Reset the sort indicator order:
@@ -727,10 +731,17 @@ void SessionOverviewWindow::onHotSpotComboChanged(const QString& text)
             m_pFunctionsTable->tableDisplaySettings()->m_lastSortOrder = defaultSortOrder;
             m_pModulesTable->tableDisplaySettings()->m_lastSortOrder = defaultSortOrder;
             m_pProcessesTable->tableDisplaySettings()->m_lastSortOrder = defaultSortOrder;
+#endif
+			auto itr = m_CounterIdxMap.find(text.toStdWString().c_str());
+			if (m_CounterIdxMap.end() != itr)
+			{
+				bool rc = m_pProcessesTable->displayTableSummaryData(m_pProfDataRdr, itr->second);
+				GT_ASSERT(rc);
+			}
         }
     }
 
-    emit hotspotIndicatorChanged(text);
+    //emit hotspotIndicatorChanged(text);
 }
 
 void SessionOverviewWindow::onAfterHotSpotComboChanged(const QString& text)
