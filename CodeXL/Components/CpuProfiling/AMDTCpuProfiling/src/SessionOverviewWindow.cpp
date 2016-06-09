@@ -512,6 +512,12 @@ bool SessionOverviewWindow::displaySessionDataTables()
 		bool rc = m_pProcessesTable->displayTableSummaryData(m_pProfDataRdr, m_counterIdx) && retVal;
 		GT_ASSERT(rc);
 
+		rc = m_pFunctionsTable->displayTableSummaryData(m_pProfDataRdr, m_counterIdx) && retVal;
+		GT_ASSERT(rc);
+
+		rc = m_pModulesTable->displayTableSummaryData(m_pProfDataRdr, m_counterIdx) && retVal;
+		GT_ASSERT(rc);
+
 #if 0
         // If there are multiple processes:
         if (m_isMultiProcesses)
@@ -736,6 +742,12 @@ void SessionOverviewWindow::onHotSpotComboChanged(const QString& text)
 			if (m_CounterIdxMap.end() != itr)
 			{
 				bool rc = m_pProcessesTable->displayTableSummaryData(m_pProfDataRdr, itr->second);
+				GT_ASSERT(rc);
+
+				rc = m_pFunctionsTable->displayTableSummaryData(m_pProfDataRdr, itr->second);
+				GT_ASSERT(rc);
+
+				rc = m_pModulesTable->displayTableSummaryData(m_pProfDataRdr, itr->second);
 				GT_ASSERT(rc);
 			}
         }

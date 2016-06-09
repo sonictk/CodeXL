@@ -81,7 +81,7 @@ protected:
     /// Fill the list data according to the requested item:
     bool fillListData();
 
-	virtual bool fillSummaryTables(int counterIdx) { counterIdx = counterIdx;  return true; }
+	virtual bool fillSummaryTables(int counterIdx); 
 
     /// Build the map of the current hot spot values.
     /// The values are taken from m_functionsInfosVec in order to save the

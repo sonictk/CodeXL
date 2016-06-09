@@ -460,3 +460,59 @@ CPUProfileDataTable::TableType ModulesDataTable::GetTableType() const
 {
     return CPUProfileDataTable::PROCESSES_DATA_TABLE;
 }
+
+bool ModulesDataTable::fillSummaryTables(int counterIdx)
+{
+	bool retVal = false;
+
+	GT_IF_WITH_ASSERT((m_pProfDataRdr != nullptr) &&
+		(m_pTableDisplaySettings != nullptr))
+	{
+		AMDTProfileCounterDescVec counterDesc;
+		bool rc = m_pProfDataRdr->GetSampledCountersList(counterDesc);
+		GT_ASSERT(rc);
+
+		AMDTProfileDataVec moduleProfileData;
+		rc = m_pProfDataRdr->GetModuleSummary(counterDesc.at(counterIdx).m_id,
+												moduleProfileData);
+		GT_ASSERT(rc);
+
+		setSortingEnabled(false);
+
+		for (auto moduleData : moduleProfileData)
+		{
+			// create QstringList to hold the values
+			QStringList list;
+
+			// TODO: to get Function name instead of complete path.
+			osFilePath modulePath(moduleData.m_name);
+			gtString filename;
+			gtString extName;
+			gtString seperator(L".");
+
+			modulePath.getFileName(filename);
+			modulePath.getFileExtension(extName);
+
+			filename += seperator;
+			filename += extName;
+
+			list << filename.asASCIICharArray();
+
+			QVariant sampleCount(moduleData.m_sampleValue.at(0).m_sampleCount);
+			list << sampleCount.toString();
+
+			QVariant sampleCountPercent(moduleData.m_sampleValue.at(0).m_sampleCountPercentage);
+			list << QString::number(moduleData.m_sampleValue.at(0).m_sampleCountPercentage, 'f', 2);
+
+			addRow(list, nullptr);
+
+			rc = delegateSamplePercent(2);
+		}
+
+		setSortingEnabled(true);
+
+		retVal = true;
+	}
+
+	return retVal;
+}

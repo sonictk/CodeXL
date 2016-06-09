@@ -842,3 +842,67 @@ CPUProfileDataTable::TableType FunctionsDataTable::GetTableType() const
 {
     return CPUProfileDataTable::FUNCTION_DATA_TABLE;
 }
+
+bool FunctionsDataTable::fillSummaryTables(int counterIdx)
+{
+	bool retVal = false;
+
+	if (nullptr != m_pProfDataRdr)
+	{
+		AMDTProfileCounterDescVec counterDesc;
+		bool rc = m_pProfDataRdr->GetSampledCountersList(counterDesc);
+
+		AMDTProfileDataVec funcProfileData;
+		rc = m_pProfDataRdr->GetFunctionSummary(counterDesc.at(counterIdx).m_id, 
+												funcProfileData);
+		GT_ASSERT(rc);
+
+		setSortingEnabled(false);
+		for (auto profData : funcProfileData)
+		{
+			// create QstringList to hold the values
+			QStringList list;
+			list << profData.m_name.asASCIICharArray();
+
+			if (0 == profData.m_sampleValue.at(0).m_sampleCount)
+			{
+				continue;
+			}
+
+			QVariant sampleCount(profData.m_sampleValue.at(0).m_sampleCount);
+			list << sampleCount.toString();
+
+			QVariant sampleCountPercent(profData.m_sampleValue.at(0).m_sampleCountPercentage);
+			list << QString::number(profData.m_sampleValue.at(0).m_sampleCountPercentage, 'f', 2);
+
+			//int row = rowCount();
+
+			AMDTProfileModuleInfoVec procInfo;
+			rc = m_pProfDataRdr->GetModuleInfo(AMDT_PROFILE_MAX_VALUE, profData.m_moduleId, procInfo);
+			GT_ASSERT(rc);
+			list << procInfo.at(0).m_name.asASCIICharArray();
+
+			addRow(list, nullptr);
+
+#if 0
+			QString modulePath(procInfo.at(0).m_path.asASCIICharArray());
+
+			rc = setToolTip(row, sampleCountPercent.toString(), modulePath);
+			if (true == rc)
+			{
+				rc = setModuleIcon(row, procInfo.at(0));
+			}
+#endif
+
+			if (true == rc)
+			{
+				rc = delegateSamplePercent(2);
+			}
+		}
+
+		setSortingEnabled(true);
+
+		retVal = true;
+	}
+	return retVal;
+}

@@ -55,7 +55,7 @@ protected:
     /// Fill the list data according to the requested item:
     bool fillListData();
 
-	virtual bool fillSummaryTables(int counterIdx) { counterIdx = counterIdx;  return true; }
+	virtual bool fillSummaryTables(int counterIdx); 
 
     /// Check if the module should be displayed or filtered:
     /// \pModule - the requested module
