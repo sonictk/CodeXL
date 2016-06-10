@@ -66,6 +66,7 @@ DataTab::DataTab(QWidget* pParent, CpuSessionWindow* pParentSessionWindow, const
 		m_pProfDataRdr = pParentSessionWindow->profDbReader();
         m_pProfileReader = &pParentSessionWindow->profileReader();
         m_pProfileInfo = m_pProfileReader->getProfileInfo();
+		m_pDisplayFilter = pParentSessionWindow->GetDisplayFilter();
 
 		AMDTProfileCounterDescVec counterDesc;
 		m_pProfDataRdr->GetSampledCountersList(counterDesc);

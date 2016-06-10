@@ -54,10 +54,14 @@ FunctionsDataTable::~FunctionsDataTable()
 
 bool FunctionsDataTable::fillListData()
 {
+#if 0
     bool retVal = false;
 
     // Sanity check:
-    GT_IF_WITH_ASSERT((m_pProfileReader != nullptr) && (m_pSessionDisplaySettings != nullptr) && (m_pTableDisplaySettings != nullptr))
+    GT_IF_WITH_ASSERT(/*(m_pProfileReader != nullptr) && */
+						(m_pSessionDisplaySettings != nullptr) && 
+						(m_pTableDisplaySettings != nullptr) && 
+						(m_pProfDataRdr != nullptr))
     {
         for (int i = 0; i < (int)m_pTableDisplaySettings->m_displayedColumns.size(); i++)
         {
@@ -72,6 +76,38 @@ bool FunctionsDataTable::fillListData()
             }
         }
 
+		AMDTProfileDataVec funcProfileData;
+		// all modules are selected 
+		int rc = m_pTableDisplaySettings->m_filterByModulePathsList.size();
+		rc = m_pTableDisplaySettings->m_filterByPIDsList.size();
+
+		// check if one process selected
+		if ((m_pTableDisplaySettings->m_filterByPIDsList.size() > 1) && 
+			(m_pTableDisplaySettings->m_filterByModulePathsList.empty()))
+		{
+			m_pProfDataRdr->GetFunctionProfileData(AMDT_PROFILE_ALL_PROCESSES, AMDT_PROFILE_ALL_MODULES, funcProfileData);
+		}
+
+		// not all process selected
+		if (m_pTableDisplaySettings->m_filterByPIDsList.size() > 1)
+		{
+
+		}
+
+		if (CpuProfileModule::UNMANAGEDPE == pModule->m_modType ||
+			CpuProfileModule::JAVAMODULE == pModule->m_modType ||
+			CpuProfileModule::MANAGEDPE == pModule->m_modType)
+		{
+			bool rc = addFunctionsForModule(pModule, modulePath, parentSamples);
+			retVal &= rc;
+		}
+
+		afProgressBarWrapper::instance().incrementProgressBar();
+
+		//bool rc = m_pProfDataRdr->GetFunctionProfileData(AMDTProcessId procId, AMDTModuleId modId, funcProfileData);
+		//GT_ASSERT(rc);
+
+#if 0
         NameModuleMap* pNameModuleMap = m_pProfileReader->getModuleMap();
 
         if (nullptr == pNameModuleMap)
@@ -134,12 +170,13 @@ bool FunctionsDataTable::fillListData()
             afProgressBarWrapper::instance().incrementProgressBar();
         }
 
+#endif
         afProgressBarWrapper::instance().hideProgressBar();
     }
 
     retVal &= CPUProfileDataTable::fillListData();
-
-    return retVal;
+#endif
+    return true;
 }
 
 bool FunctionsDataTable::addFunctionsForModule(const CpuProfileModule* pModule, const QString& moduleFilePath, AggregatedSample& parentSamples)
@@ -904,5 +941,56 @@ bool FunctionsDataTable::fillSummaryTables(int counterIdx)
 
 		retVal = true;
 	}
+	return retVal;
+}
+
+bool FunctionsDataTable::fillTableData()
+{
+	bool retVal = false;
+
+	GT_IF_WITH_ASSERT((m_pProfDataRdr != nullptr) &&
+		(m_pSessionDisplaySettings != nullptr) &&
+		(m_pTableDisplaySettings != nullptr))
+	{
+		// get samples for Data cache access events
+		AMDTProfileSessionInfo sessionInfo;
+
+		bool rc = m_pProfDataRdr->GetProfileSessionInfo(sessionInfo);
+		GT_ASSERT(rc);
+
+		gtVector<AMDTProfileData> allProcessData;
+		rc = m_pProfDataRdr->GetFunctionProfileData(AMDT_PROFILE_ALL_PROCESSES, AMDT_PROFILE_ALL_MODULES, allProcessData);
+		GT_ASSERT(rc);
+
+		setSortingEnabled(false);
+
+		for (auto profData : allProcessData)
+		{
+			QStringList list;
+
+			std::vector<gtString> selectedCounterList;
+
+			// Insert function name
+			list << profData.m_name.asASCIICharArray();
+
+			// insert module name
+			AMDTProfileModuleInfoVec procInfo;
+			m_pProfDataRdr->GetModuleInfo(AMDT_PROFILE_ALL_PROCESSES, profData.m_moduleId, procInfo);
+
+			list << acGTStringToQString(procInfo.at(0).m_name);
+
+			m_pDisplayFilter->GetSelectedCounterList(selectedCounterList);
+			int i = 0;
+
+			for (auto counter : selectedCounterList)
+			{
+				QVariant sampleCount(profData.m_sampleValue.at(i++).m_sampleCount);
+				list << sampleCount.toString();
+			}
+
+			addRow(list, nullptr);
+		}
+	}
+
 	return retVal;
 }

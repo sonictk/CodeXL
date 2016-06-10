@@ -181,7 +181,8 @@ bool SessionFunctionView::displaySessionDataTables()
     GT_IF_WITH_ASSERT((m_pFunctionTable != nullptr) && (m_pProfileReader != nullptr))
     {
         pSessionDisplaySettings->calculateDisplayedColumns(m_pProfileReader->getTopologyMap());
-        retVal = m_pFunctionTable->displayProfileData(m_pProfileReader);
+        //retVal = m_pFunctionTable->displayProfileData(m_pProfileReader);
+		retVal = m_pFunctionTable->displayTableData(m_pProfDataRdr, m_pDisplayFilter);
     }
 
     return retVal;
@@ -399,7 +400,8 @@ void SessionFunctionView::onOpenModuleSelector(const QString& link)
         pSessionData = qobject_cast<CPUSessionTreeItemData*>(m_pDisplayedSessionItemData->extendedItemData());
     }
 
-    ModuleFilterDialog mfd(m_pProfileReader, &m_functionsTablesFilter, pSessionData, afMainAppWindow::instance());
+	//TODO: need to set the system module flag
+    ModuleFilterDialog mfd(m_pProfDataRdr, &m_functionsTablesFilter, pSessionData, true, afMainAppWindow::instance());
 
     if (QDialog::Accepted == mfd.exec())
     {
@@ -483,11 +485,11 @@ void SessionFunctionView::fillPIDComb()
     {
         QStringList pidList;
 
-        // Go through the processes in the profile reader and add each of them to the combo box:
-        m_pProfileReader->getProcessMap()->begin()->first;
+		AMDTProfileProcessInfoVec procInfo;
+		m_pProfDataRdr->GetProcessInfo(AMDT_PROFILE_ALL_PROCESSES, procInfo);
 
         // Check if this session is a multi-process session:
-        bool isMultiProcess = m_pProfileReader->getProcessMap()->size() > 1;
+        bool isMultiProcess = procInfo.size() > 1;
 
         // If there are multiple processes, add "All Processes" item:
         if (isMultiProcess)
@@ -499,10 +501,9 @@ void SessionFunctionView::fillPIDComb()
         PidProcessMap::iterator pmStart = m_pProfileReader->getProcessMap()->begin();
         PidProcessMap::iterator pmEnd = m_pProfileReader->getProcessMap()->end();
 
-        for (PidProcessMap::iterator pmI = pmStart; pmI != pmEnd; ++ pmI)
+        for (const auto& proc : procInfo)
         {
-            QFileInfo fi(acGTStringToQString(pmI->second.getPath()));
-            QString pidAsString = QString("%1(%2)").arg(fi.fileName()).arg(pmI->first);
+            QString pidAsString = QString("%1(%2)").arg(acGTStringToQString(proc.m_name)).arg(proc.m_pid);
             pidList << pidAsString;
         }
 
@@ -520,6 +521,8 @@ void SessionFunctionView::fillPIDComb()
         m_pPIDComboBoxAction->UpdateCurrentIndex(index);
     }
 }
+
+#if 0
 void SessionFunctionView::addModulesForPID(uint pid)
 {
     // Update the modules list for the requested pid:
@@ -546,10 +549,12 @@ void SessionFunctionView::addModulesForPID(uint pid)
                 bool isSystemModule = AuxIsSystemModule(mit->first);
                 m_functionsTablesFilter.m_isSystemDllList.append(isSystemModule);
                 ++moduleCount;
+				++counter;
             }
         }
     }
 }
+#endif
 
 void SessionFunctionView::onSelectPid(int index)
 {
@@ -576,51 +581,58 @@ void SessionFunctionView::onSelectPid(int index)
 
 void SessionFunctionView::updateDataFromPidComboBox()
 {
-    // Sanity check:
     const QComboBox* pPIDComboBox = TopToolbarComboBox(m_pPIDComboBoxAction);
-    GT_IF_WITH_ASSERT((m_pFunctionTable != nullptr) && (pPIDComboBox != nullptr))
-    {
-        // Clear all lists in the table settings:
-        m_functionsTablesFilter.m_filterByPIDsList.clear();
-        m_functionsTablesFilter.m_filterByModulePathsList.clear();
-        m_functionsTablesFilter.m_allModulesFullPathsList.clear();
-        m_functionsTablesFilter.m_isModule32BitList.clear();
-        m_functionsTablesFilter.m_isSystemDllList.clear();
+	GT_IF_WITH_ASSERT((m_pFunctionTable != nullptr) && (pPIDComboBox != nullptr))
+	{
+		// Clear all lists in the table settings:
+		m_functionsTablesFilter.m_filterByPIDsList.clear();
+		m_functionsTablesFilter.m_filterByModulePathsList.clear();
+		m_functionsTablesFilter.m_allModulesFullPathsList.clear();
+		m_functionsTablesFilter.m_isModule32BitList.clear();
+		m_functionsTablesFilter.m_isSystemDllList.clear();
 
-        if (CP_profileAllProcesses == pPIDComboBox->currentText())
-        {
-            int count = pPIDComboBox->count();
+		AMDTUInt32 pid = 0;
 
-            for (int i = 0; i < count; ++i)
-            {
-                if (0 != pPIDComboBox->itemText(i).compare(CP_profileAllProcesses))
-                {
-                    ProcessIdType pid = 0;
-                    bool rc = ProcessNameToPID(pPIDComboBox->itemText(i), pid);
+		if (CP_profileAllProcesses == pPIDComboBox->currentText())
+		{
+			pid = AMDT_PROFILE_ALL_PROCESSES;
+			int count = pPIDComboBox->count();
+			for (int i = 0; i < count; ++i)
+			{
+				if (0 != pPIDComboBox->itemText(i).compare(CP_profileAllProcesses))
+				{
+					AMDTUInt32 currentPID = 0;
+					bool rc = ProcessNameToPID(pPIDComboBox->itemText(i), currentPID);
+					if (rc)
+					{
+						m_functionsTablesFilter.m_filterByPIDsList.append(currentPID);
+					}
+				}
+			}
+		}
+		else
+		{
+			bool ret = ProcessNameToPID(pPIDComboBox->currentText(), pid);
+			if (true == ret)
+			{
+				m_functionsTablesFilter.m_filterByPIDsList.append(pid);
+			}
+		}
 
-                    if (rc)
-                    {
-                        m_functionsTablesFilter.m_filterByPIDsList.append(pid);
+		gtVector<AMDTProfileModuleInfo> modInfo;
+		bool ret = m_pProfDataRdr->GetModuleInfo(pid, AMDT_PROFILE_ALL_MODULES, modInfo);
+		GT_ASSERT(ret);
 
-                        // Add the modules for this PID:
-                        addModulesForPID(pid);
-                    }
-                }
-            }
-        }
-        else
-        {
-            ProcessIdType pid = 0;
-
-            bool rc = ProcessNameToPID(pPIDComboBox->currentText(), pid);
-
-            if (rc)
-            {
-                m_functionsTablesFilter.m_filterByPIDsList.append(pid);
-                addModulesForPID(pid);
-            }
-        }
-    }
+		for (const auto& module : modInfo)
+		{
+			if (!m_functionsTablesFilter.m_allModulesFullPathsList.contains(acGTStringToQString(module.m_path)))
+			{
+				m_functionsTablesFilter.m_allModulesFullPathsList.append(acGTStringToQString(module.m_path));
+				m_functionsTablesFilter.m_isModule32BitList.append(module.m_is64Bit ? false : true);
+				m_functionsTablesFilter.m_isSystemDllList.append(module.m_isSystemModule);
+			}
+		}
+	}
 }
 
 void SessionFunctionView::UpdateTableDisplay(unsigned int updateType)

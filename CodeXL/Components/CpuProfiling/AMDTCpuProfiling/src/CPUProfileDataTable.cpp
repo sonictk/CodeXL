@@ -1774,3 +1774,70 @@ bool CPUProfileDataTable::delegateSamplePercent(int colNum)
 
 	return retVal;
 }
+
+bool CPUProfileDataTable::
+displayTableData(shared_ptr<cxlProfileDataReader> pProfDataRdr, 
+					shared_ptr<DisplayFilter> diplayFilter)
+{
+	bool retVal = false;
+
+	GT_IF_WITH_ASSERT(pProfDataRdr != nullptr)
+	{
+		// Set the profile reader:
+		m_pProfDataRdr = pProfDataRdr;
+		m_pDisplayFilter = diplayFilter;
+
+		// Clear table items:
+		clear();
+		clearContents();
+		setColumnCount(0);
+		setRowCount(0);
+		m_totalSampleCount = 0;
+		m_hotSpotCellsMap.clear();
+
+		// Set the headers:
+		bool rcHeaders = true;
+
+		if (horizontalHeader()->count() == 0)
+		{
+			rcHeaders = initializeListHeaders();
+			GT_ASSERT(rcHeaders);
+		}
+
+		// Fill the list data:
+		bool rcData = fillTableData();
+		GT_ASSERT(rcData);
+
+#if 0
+		horizontalHeader()->setSortIndicatorShown(false);
+
+		// Perform post process operations on the table:
+		bool rcPost = setHotSpotIndicatorValues();
+		GT_ASSERT(rcPost);
+
+		// Hide the filtered columns specified in display filter:
+		hideFilteredColumns();
+
+		// Perform post process operations on the table:
+		bool rcPercent = true;
+		rcPercent = setPercentValues();
+		GT_ASSERT(rcPercent);
+
+		// Sort the table:
+		sortTable();
+
+		// Make sure that the CLU percent values are displayed as percent:
+		setCLUPercentValues();
+
+		retVal = rcHeaders && rcData && rcPost && rcPercent;
+#endif
+	}
+
+	END_TICK_COUNT(DisplayProfileData);
+
+#if AMDT_BUILD_TARGET == AMDT_WINDOWS_OS
+	OS_OUTPUT_FORMAT_DEBUG_LOG(OS_DEBUG_LOG_DEBUG, L"Elapsed Time: displayProfileData (%u ms)", m_elapsedTime[DisplayProfileData]);
+#endif
+
+	return retVal;
+}

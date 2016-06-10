@@ -120,7 +120,7 @@ private:
     acWidgetAction* m_pLabelModuleSelectedAction;
     acWidgetAction* m_pPIDComboBoxAction;
 
-    void addModulesForPID(uint pid);
+    //void addModulesForPID(uint pid);
     void updateDataFromPidComboBox();
     ProcessIdType getCurrentPid();
     bool m_updateData;

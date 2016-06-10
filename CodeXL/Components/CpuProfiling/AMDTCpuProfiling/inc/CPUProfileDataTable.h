@@ -109,6 +109,8 @@ public:
     /// \param displayFilter the requested display data
     /// \return true / false is succeeded or failed
     bool displayProfileData(CpuProfileReader* pProfileReader);
+	bool displayTableData(shared_ptr<cxlProfileDataReader> pProfDataRdr, shared_ptr<DisplayFilter> diplayFilter);
+	virtual bool fillTableData() { return true; }
 
 	bool displayTableSummaryData(shared_ptr<cxlProfileDataReader> pProfDataRdr, int counterIdx);
 
@@ -258,6 +260,7 @@ protected:
     /// checks the profiling mode and return true if Cache Line profiling
     bool IsCacheLineProfiling() const;
 	bool delegateSamplePercent(int colNum);
+	shared_ptr<DisplayFilter>           m_pDisplayFilter = nullptr;
 
 protected slots:
 
