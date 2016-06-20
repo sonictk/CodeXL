@@ -3158,7 +3158,7 @@ HRESULT PrdTranslator::WriteProfile(const QString& proFile,
         createDb = createDbEnvStr.isEqualNoCase(L"YES");
     }
 
-    if (createDb)
+    //if (createDb)
     {
         m_dbWriter.reset(new ProfilerDataDBWriter);
     }
